@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tasawuf Loop Battle</title>
+    <title>Tasawuf RPG Battle System</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -29,6 +30,40 @@
 
       <section class="controls">
         <button id="restart">Restart</button>
+      <h1>Tasawuf RPG Battle System</h1>
+      <p class="subtitle">Turn-based spiritual battle: stabilkan jiwa musuh melalui Syariat → Ma'rifat.</p>
+
+      <section class="top-grid">
+        <article class="panel">
+          <h2>Player</h2>
+          <p>Stage: <span id="player-stage">Syariat</span></p>
+          <p>Combo Chain: <span id="combo-chain">0</span></p>
+          <p>Steadfast Stack: <span id="steadfast">0</span></p>
+        </article>
+
+        <article class="panel enemy-panel">
+          <h2 id="enemy-name">The Loud Self</h2>
+          <p>Phase: <span id="enemy-phase">EGO_SURGE</span></p>
+          <p>Ego: <span id="ego-value">75</span></p>
+          <p>Nafs: <span id="nafs-value">55</span></p>
+          <p>Calm: <span id="calm-value">25</span></p>
+          <p class="metric">Turmoil: <span id="turmoil-value">0</span> | Harmony: <span id="harmony-value">0</span></p>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h3>Narrative Trigger</h3>
+        <p id="narrative">-</p>
+      </section>
+
+      <section class="panel">
+        <h3>Skill Actions</h3>
+        <div id="skill-buttons" class="skill-grid"></div>
+      </section>
+
+      <section class="controls">
+        <button id="advance-stage">Advance Stage</button>
+        <button id="restart">Restart Battle</button>
       </section>
 
       <section class="panel log-panel">
