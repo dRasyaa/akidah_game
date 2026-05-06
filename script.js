@@ -1,99 +1,135 @@
-const MAX_HP = 100;
+const LEVEL_START = 50;
+const LEVEL_WIN = 100;
+const LEVEL_LOSE = 0;
+
+const TRIGGERS = [
+  "Ada pujian datang, ego ingin jadi pusat perhatian.",
+  "Ada hinaan datang, hati ingin membalas cepat.",
+  "Ada godaan instan, nafs minta hasil tanpa proses.",
+  "Ada momen hening, jiwa punya peluang menata niat.",
+  "Ada kegagalan kecil, batin ingin menyalahkan orang lain.",
+  "Ada keberhasilan, muncul bisikan merasa paling hebat.",
+];
+
+const ATTACK_POOL = [
+  "Dzikir Fokus",
+  "Muraqabah Pulse",
+  "Sabr Stance",
+  "Ikhlas Drive",
+  "Nafs Suppression",
+  "Tawakkal Guard",
+  "Muhasabah Cut",
+  "Ego Collapse",
+  "Truth Awakening",
+  "Presence Merge",
+];
 
 const state = {
-  turn: "player",
-  playerHp: MAX_HP,
-  enemyHp: MAX_HP,
+  level: LEVEL_START,
+  turn: 1,
+  options: [],
+  effective: "",
   gameOver: false,
 };
 
-const playerHpEl = document.getElementById("player-hp");
-const enemyHpEl = document.getElementById("enemy-hp");
-const playerAttackBtn = document.getElementById("player-attack");
-const enemyAttackBtn = document.getElementById("enemy-attack");
-const battleLogEl = document.getElementById("battle-log");
-const restartBtn = document.getElementById("restart");
-const playerCard = document.getElementById("player-card");
-const enemyCard = document.getElementById("enemy-card");
+const el = {
+  level: document.getElementById("tasawuf-level"),
+  turn: document.getElementById("turn-value"),
+  narrative: document.getElementById("narrative"),
+  skills: document.getElementById("skill-buttons"),
+  log: document.getElementById("battle-log"),
+  restart: document.getElementById("restart"),
+};
 
-function randomDamage() {
-  return Math.floor(Math.random() * 13) + 8; // 8-20
+function randomInt(max) {
+  return Math.floor(Math.random() * max);
 }
 
-function addLog(message, isCritical = false) {
-  const item = document.createElement("li");
-  item.textContent = message;
-  if (isCritical) {
-    item.classList.add("critical");
+function addLog(text, cls = "") {
+  const li = document.createElement("li");
+  li.textContent = text;
+  if (cls) li.classList.add(cls);
+  el.log.prepend(li);
+}
+
+function pickRandomUnique(source, count) {
+  const pool = [...source];
+  const out = [];
+  while (out.length < count && pool.length > 0) {
+    out.push(pool.splice(randomInt(pool.length), 1)[0]);
   }
-  battleLogEl.prepend(item);
+  return out;
+}
+
+function startTurn() {
+  if (state.gameOver) return;
+
+  const trigger = TRIGGERS[randomInt(TRIGGERS.length)];
+  state.options = pickRandomUnique(ATTACK_POOL, 4);
+  state.effective = state.options[randomInt(state.options.length)];
+
+  el.narrative.textContent = `Turn ${state.turn}: ${trigger}`;
+  addLog(`Turn ${state.turn} dimulai. Trigger baru muncul.`);
+
+  render();
+}
+
+function resolveChoice(skill) {
+  if (state.gameOver) return;
+
+  const correct = skill === state.effective;
+  state.level += correct ? 20 : -10;
+  state.level = Math.max(LEVEL_LOSE, Math.min(LEVEL_WIN, state.level));
+
+  if (correct) {
+    addLog(`✅ ${skill} efektif. Tasawuf Level +20.`, "success");
+  } else {
+    addLog(`❌ ${skill} gagal. Tasawuf Level -10.`, "critical");
+  }
+
+  if (state.level >= LEVEL_WIN) {
+    state.gameOver = true;
+    addLog("Menang: Tasawuf Level musuh mencapai 100.", "success");
+    render();
+    return;
+  }
+
+  if (state.level <= LEVEL_LOSE) {
+    state.gameOver = true;
+    addLog("Kalah: Tasawuf Level musuh jatuh ke 0.", "critical");
+    render();
+    return;
+  }
+
+  state.turn += 1;
+  startTurn();
 }
 
 function render() {
-  playerHpEl.textContent = state.playerHp;
-  enemyHpEl.textContent = state.enemyHp;
+  el.level.textContent = state.level;
+  el.turn.textContent = state.turn;
 
-  const isPlayerTurn = state.turn === "player";
-  playerAttackBtn.disabled = !isPlayerTurn || state.gameOver;
-  enemyAttackBtn.disabled = isPlayerTurn || state.gameOver;
-
-  playerCard.classList.toggle("active", isPlayerTurn && !state.gameOver);
-  enemyCard.classList.toggle("active", !isPlayerTurn && !state.gameOver);
-}
-
-function checkWinner() {
-  if (state.playerHp <= 0 || state.enemyHp <= 0) {
-    state.gameOver = true;
-
-    if (state.playerHp <= 0 && state.enemyHp <= 0) {
-      addLog("Draw! Dua monster tumbang bersamaan.", true);
-    } else if (state.playerHp <= 0) {
-      addLog("Pemain 2 menang!", true);
-    } else {
-      addLog("Pemain 1 menang!", true);
-    }
-
-    render();
-    return true;
-  }
-
-  return false;
-}
-
-function attack(attacker) {
-  if (state.gameOver) return;
-
-  const isPlayer = attacker === "player";
-  if (state.turn !== attacker) return;
-
-  const damage = randomDamage();
-
-  if (isPlayer) {
-    state.enemyHp = Math.max(0, state.enemyHp - damage);
-    addLog(`Pemain 1 menyerang dan memberi ${damage} damage.`);
-  } else {
-    state.playerHp = Math.max(0, state.playerHp - damage);
-    addLog(`Pemain 2 menyerang dan memberi ${damage} damage.`);
-  }
-
-  if (checkWinner()) return;
-
-  state.turn = isPlayer ? "enemy" : "player";
-  render();
+  el.skills.innerHTML = "";
+  state.options.forEach((skill) => {
+    const btn = document.createElement("button");
+    btn.className = "skill-btn";
+    btn.disabled = state.gameOver;
+    btn.textContent = skill;
+    btn.addEventListener("click", () => resolveChoice(skill));
+    el.skills.appendChild(btn);
+  });
 }
 
 function restart() {
-  state.turn = "player";
-  state.playerHp = MAX_HP;
-  state.enemyHp = MAX_HP;
+  state.level = LEVEL_START;
+  state.turn = 1;
+  state.options = [];
+  state.effective = "";
   state.gameOver = false;
-  battleLogEl.innerHTML = "";
-  addLog("Match dimulai! Giliran Pemain 1 menyerang.");
-  render();
+  el.log.innerHTML = "";
+  addLog("Game di-reset. Tasawuf Level musuh dimulai dari 50.");
+  startTurn();
 }
 
-playerAttackBtn.addEventListener("click", () => attack("player"));
-enemyAttackBtn.addEventListener("click", () => attack("enemy"));
-restartBtn.addEventListener("click", restart);
-
+el.restart.addEventListener("click", restart);
 restart();
