@@ -1,99 +1,171 @@
-const MAX_HP = 100;
+const LEVEL_START = 50;
+const LEVEL_TARGET = 100;
+const LEVEL_FAIL = 0;
+
+const TRIGGERS = [
+  "Saat dipuji, hati mulai condong pada rasa ingin terlihat lebih baik.",
+  "Saat lelah, muncul dorongan mencari jalan pintas yang instan.",
+  "Saat disalahkan, ego ingin langsung membela diri.",
+  "Saat sendiri, muncul ruang untuk jujur pada niat batin.",
+  "Saat berhasil, muncul bisikan merasa paling layak.",
+  "Saat gagal, muncul dorongan menyalahkan keadaan.",
+  "Saat hening, ada kesempatan menata nafas dan niat.",
+];
+
+const ATTACK_POOL = [
+  "Dzikir Fokus",
+  "Muraqabah Pulse",
+  "Tawadhu Break",
+  "Sabr Stance",
+  "Muhasabah Cut",
+  "Ikhlas Drive",
+  "Tawakkal Guard",
+  "Nafs Suppression",
+  "Reality Veil Pierce",
+  "Presence Merge",
+  "Ego Collapse",
+  "Truth Awakening",
+];
 
 const state = {
-  turn: "player",
-  playerHp: MAX_HP,
-  enemyHp: MAX_HP,
+  tasawufLevel: LEVEL_START,
+  turn: 1,
   gameOver: false,
+  effectiveSkill: "",
+  options: [],
 };
 
-const playerHpEl = document.getElementById("player-hp");
-const enemyHpEl = document.getElementById("enemy-hp");
-const playerAttackBtn = document.getElementById("player-attack");
-const enemyAttackBtn = document.getElementById("enemy-attack");
-const battleLogEl = document.getElementById("battle-log");
-const restartBtn = document.getElementById("restart");
-const playerCard = document.getElementById("player-card");
-const enemyCard = document.getElementById("enemy-card");
+const el = {
+  enemyName: document.getElementById("enemy-name"),
+  phase: document.getElementById("enemy-phase"),
+  ego: document.getElementById("ego-value"),
+  nafs: document.getElementById("nafs-value"),
+  calm: document.getElementById("calm-value"),
+  turmoil: document.getElementById("turmoil-value"),
+  harmony: document.getElementById("harmony-value"),
+  playerStage: document.getElementById("player-stage"),
+  combo: document.getElementById("combo-chain"),
+  steadfast: document.getElementById("steadfast"),
+  narrative: document.getElementById("narrative"),
+  skillButtons: document.getElementById("skill-buttons"),
+  log: document.getElementById("battle-log"),
+  advance: document.getElementById("advance-stage"),
+  restart: document.getElementById("restart"),
+};
 
-function randomDamage() {
-  return Math.floor(Math.random() * 13) + 8; // 8-20
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
 }
 
-function addLog(message, isCritical = false) {
-  const item = document.createElement("li");
-  item.textContent = message;
-  if (isCritical) {
-    item.classList.add("critical");
+function sample(arr, count) {
+  const copy = [...arr];
+  const picked = [];
+  while (picked.length < count && copy.length > 0) {
+    const i = Math.floor(Math.random() * copy.length);
+    picked.push(copy.splice(i, 1)[0]);
   }
-  battleLogEl.prepend(item);
+  return picked;
+}
+
+function addLog(text, cls = "") {
+  const li = document.createElement("li");
+  li.textContent = text;
+  if (cls) li.classList.add(cls);
+  el.log.prepend(li);
+}
+
+function derivedEnemyVisuals() {
+  const ego = clamp(100 - state.tasawufLevel, 0, 100);
+  const nafs = clamp(110 - state.tasawufLevel, 0, 100);
+  const calm = clamp(state.tasawufLevel, 0, 100);
+  const turmoil = ego + nafs - calm;
+  const harmony = calm - Math.abs(ego - nafs) / 2;
+
+  let phase = "BALANCE";
+  if (nafs >= 70) phase = "NAFS_DOMINANCE";
+  if (ego >= 70 && ego > nafs) phase = "EGO_SURGE";
+  if (calm >= 70) phase = "CALM_AWAKENING";
+
+  return { ego, nafs, calm, turmoil, harmony, phase };
+}
+
+function prepareTurn() {
+  if (state.gameOver) return;
+  state.options = sample(ATTACK_POOL, 4);
+  state.effectiveSkill = state.options[Math.floor(Math.random() * state.options.length)];
+  el.narrative.textContent = `Turn ${state.turn}: ${TRIGGERS[Math.floor(Math.random() * TRIGGERS.length)]}`;
+  addLog(`Turn ${state.turn}: Trigger baru muncul. Pilih 1 dari 4 aksi.`);
+  render();
+}
+
+function pickSkill(skillName) {
+  if (state.gameOver) return;
+
+  if (skillName === state.effectiveSkill) {
+    state.tasawufLevel = clamp(state.tasawufLevel + 20, LEVEL_FAIL, LEVEL_TARGET);
+    addLog(`✅ ${skillName} efektif! Tasawuf Level +20.`, "success");
+  } else {
+    state.tasawufLevel = clamp(state.tasawufLevel - 10, LEVEL_FAIL, LEVEL_TARGET);
+    addLog(`❌ ${skillName} tidak efektif. Tasawuf Level -10.`, "critical");
+  }
+
+  if (state.tasawufLevel >= LEVEL_TARGET) {
+    state.gameOver = true;
+    addLog("Transformasi sukses: Tasawuf Level mencapai 100.", "success");
+    render();
+    return;
+  }
+
+  if (state.tasawufLevel <= LEVEL_FAIL) {
+    state.gameOver = true;
+    addLog("Jiwa runtuh: Tasawuf Level mencapai 0.", "critical");
+    render();
+    return;
+  }
+
+  state.turn += 1;
+  prepareTurn();
 }
 
 function render() {
-  playerHpEl.textContent = state.playerHp;
-  enemyHpEl.textContent = state.enemyHp;
+  const d = derivedEnemyVisuals();
+  el.enemyName.textContent = "Jiwa Musuh";
+  el.phase.textContent = d.phase;
+  el.ego.textContent = d.ego;
+  el.nafs.textContent = d.nafs;
+  el.calm.textContent = d.calm;
+  el.turmoil.textContent = Math.round(d.turmoil);
+  el.harmony.textContent = Math.round(d.harmony);
 
-  const isPlayerTurn = state.turn === "player";
-  playerAttackBtn.disabled = !isPlayerTurn || state.gameOver;
-  enemyAttackBtn.disabled = isPlayerTurn || state.gameOver;
+  el.playerStage.textContent = `Tasawuf Level ${state.tasawufLevel}`;
+  el.combo.textContent = state.turn;
+  el.steadfast.textContent = state.gameOver ? "END" : "ACTIVE";
 
-  playerCard.classList.toggle("active", isPlayerTurn && !state.gameOver);
-  enemyCard.classList.toggle("active", !isPlayerTurn && !state.gameOver);
-}
+  el.skillButtons.innerHTML = "";
+  state.options.forEach((name) => {
+    const btn = document.createElement("button");
+    btn.className = "skill-btn";
+    btn.disabled = state.gameOver;
+    btn.textContent = name;
+    btn.addEventListener("click", () => pickSkill(name));
+    el.skillButtons.appendChild(btn);
+  });
 
-function checkWinner() {
-  if (state.playerHp <= 0 || state.enemyHp <= 0) {
-    state.gameOver = true;
-
-    if (state.playerHp <= 0 && state.enemyHp <= 0) {
-      addLog("Draw! Dua monster tumbang bersamaan.", true);
-    } else if (state.playerHp <= 0) {
-      addLog("Pemain 2 menang!", true);
-    } else {
-      addLog("Pemain 1 menang!", true);
-    }
-
-    render();
-    return true;
-  }
-
-  return false;
-}
-
-function attack(attacker) {
-  if (state.gameOver) return;
-
-  const isPlayer = attacker === "player";
-  if (state.turn !== attacker) return;
-
-  const damage = randomDamage();
-
-  if (isPlayer) {
-    state.enemyHp = Math.max(0, state.enemyHp - damage);
-    addLog(`Pemain 1 menyerang dan memberi ${damage} damage.`);
-  } else {
-    state.playerHp = Math.max(0, state.playerHp - damage);
-    addLog(`Pemain 2 menyerang dan memberi ${damage} damage.`);
-  }
-
-  if (checkWinner()) return;
-
-  state.turn = isPlayer ? "enemy" : "player";
-  render();
+  el.advance.disabled = true;
 }
 
 function restart() {
-  state.turn = "player";
-  state.playerHp = MAX_HP;
-  state.enemyHp = MAX_HP;
+  state.tasawufLevel = LEVEL_START;
+  state.turn = 1;
   state.gameOver = false;
-  battleLogEl.innerHTML = "";
-  addLog("Match dimulai! Giliran Pemain 1 menyerang.");
-  render();
+  state.options = [];
+  state.effectiveSkill = "";
+  el.log.innerHTML = "";
+  addLog("Battle dimulai dari Tasawuf Level 50.");
+  prepareTurn();
 }
 
-playerAttackBtn.addEventListener("click", () => attack("player"));
-enemyAttackBtn.addEventListener("click", () => attack("enemy"));
-restartBtn.addEventListener("click", restart);
+el.restart.addEventListener("click", restart);
+el.advance.addEventListener("click", () => {});
 
 restart();
