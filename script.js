@@ -73,6 +73,10 @@ function addLog(text, cls = "") {
   if (cls) li.classList.add(cls);
   el.log.prepend(li);
 }
+function applySkill(skill) {
+  if (state.gameOver) return;
+  const stageIndex = STAGES.indexOf(skill.stage);
+  if (stageIndex > state.stageIndex) return;
 
 function derivedEnemyVisuals() {
   const ego = clamp(100 - state.tasawufLevel, 0, 100);
@@ -154,6 +158,37 @@ function render() {
   el.advance.disabled = true;
 }
 
+function renderSkillButtons() {
+  el.skillButtons.innerHTML = "";
+  SKILLS.forEach((skill) => {
+    const btn = document.createElement("button");
+    btn.className = "skill-btn";
+    btn.textContent = `${skill.name} [${skill.stage}]`;
+    btn.disabled = STAGES.indexOf(skill.stage) > state.stageIndex || state.gameOver;
+    btn.addEventListener("click", () => applySkill(skill));
+    el.skillButtons.appendChild(btn);
+  });
+}
+function loadBoss() {
+  const key = STAGES[state.stageIndex];
+  const boss = BOSS_BY_STAGE[key];
+  state.enemy = { ego: boss.ego, nafs: boss.nafs, calm: boss.calm, phase: recalcPhase(), name: boss.name };
+  el.narrative.textContent = boss.narrative;
+}
+function render() {
+  const m = metrics();
+  el.playerStage.textContent = STAGES[state.stageIndex];
+  el.combo.textContent = state.combo;
+  el.steadfast.textContent = state.steadfast;
+  el.enemyName.textContent = state.enemy.name;
+  el.phase.textContent = state.enemy.phase;
+  el.ego.textContent = state.enemy.ego;
+  el.nafs.textContent = state.enemy.nafs;
+  el.calm.textContent = state.enemy.calm;
+  el.turmoil.textContent = Math.round(m.turmoil);
+  el.harmony.textContent = Math.round(m.harmony);
+  renderSkillButtons();
+}
 function restart() {
   state.tasawufLevel = LEVEL_START;
   state.turn = 1;
