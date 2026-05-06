@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monster Duel 1v1</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Monster Duel 1v1</h1>
+      <p class="subtitle">Battle sederhana ala Pokémon (fitur attack only)</p>
+
+      <section class="arena">
+        <article class="card" id="player-card">
+          <h2 id="player-name">Pemain 1</h2>
+          <p>HP: <span id="player-hp">100</span>/100</p>
+          <button id="player-attack" class="attack-btn">Attack</button>
+        </article>
+
+        <article class="card" id="enemy-card">
+          <h2 id="enemy-name">Pemain 2</h2>
+          <p>HP: <span id="enemy-hp">100</span>/100</p>
+          <button id="enemy-attack" class="attack-btn">Attack</button>
+        </article>
+      </section>
+
+      <section class="log-panel">
+        <h3>Battle Log</h3>
+        <ul id="battle-log"></ul>
+      </section>
+
+      <button id="restart" class="restart-btn">Restart Match</button>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
