@@ -3,34 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Monster Duel 1v1</title>
+    <title>Tasawuf RPG Battle System</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="container">
-      <h1>Monster Duel 1v1</h1>
-      <p class="subtitle">Battle sederhana ala Pokémon (fitur attack only)</p>
+      <h1>Tasawuf RPG Battle System</h1>
+      <p class="subtitle">Turn-based spiritual battle: stabilkan jiwa musuh melalui Syariat → Ma'rifat.</p>
 
-      <section class="arena">
-        <article class="card" id="player-card">
-          <h2 id="player-name">Pemain 1</h2>
-          <p>HP: <span id="player-hp">100</span>/100</p>
-          <button id="player-attack" class="attack-btn">Attack</button>
+      <section class="top-grid">
+        <article class="panel">
+          <h2>Player</h2>
+          <p>Stage: <span id="player-stage">Syariat</span></p>
+          <p>Combo Chain: <span id="combo-chain">0</span></p>
+          <p>Steadfast Stack: <span id="steadfast">0</span></p>
         </article>
 
-        <article class="card" id="enemy-card">
-          <h2 id="enemy-name">Pemain 2</h2>
-          <p>HP: <span id="enemy-hp">100</span>/100</p>
-          <button id="enemy-attack" class="attack-btn">Attack</button>
+        <article class="panel enemy-panel">
+          <h2 id="enemy-name">The Loud Self</h2>
+          <p>Phase: <span id="enemy-phase">EGO_SURGE</span></p>
+          <p>Ego: <span id="ego-value">75</span></p>
+          <p>Nafs: <span id="nafs-value">55</span></p>
+          <p>Calm: <span id="calm-value">25</span></p>
+          <p class="metric">Turmoil: <span id="turmoil-value">0</span> | Harmony: <span id="harmony-value">0</span></p>
         </article>
       </section>
 
-      <section class="log-panel">
+      <section class="panel">
+        <h3>Narrative Trigger</h3>
+        <p id="narrative">-</p>
+      </section>
+
+      <section class="panel">
+        <h3>Skill Actions</h3>
+        <div id="skill-buttons" class="skill-grid"></div>
+      </section>
+
+      <section class="controls">
+        <button id="advance-stage">Advance Stage</button>
+        <button id="restart">Restart Battle</button>
+      </section>
+
+      <section class="panel log-panel">
         <h3>Battle Log</h3>
         <ul id="battle-log"></ul>
       </section>
-
-      <button id="restart" class="restart-btn">Restart Match</button>
     </main>
 
     <script src="script.js"></script>
