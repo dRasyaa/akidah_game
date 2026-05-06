@@ -3,11 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tasawuf Loop Battle</title>
     <title>Tasawuf RPG Battle System</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="container">
+      <h1>Tasawuf RPG Loop Battle</h1>
+      <p class="subtitle">Loop: Trigger Baru → 4 Pilihan Attack → 1 Efektif (+20) / Gagal (-10) → Ulang.</p>
+
+      <section class="panel status">
+        <h2>Jiwa Musuh</h2>
+        <p>Tasawuf Level: <span id="tasawuf-level">50</span></p>
+        <p>Turn: <span id="turn-value">1</span></p>
+      </section>
+
+      <section class="panel">
+        <h3>Narrative Trigger Turn Ini</h3>
+        <p id="narrative">-</p>
+      </section>
+
+      <section class="panel">
+        <h3>Pilih 1 Attack</h3>
+        <div id="skill-buttons" class="skill-grid"></div>
+      </section>
+
+      <section class="controls">
+        <button id="restart">Restart</button>
       <h1>Tasawuf RPG Battle System</h1>
       <p class="subtitle">Turn-based spiritual battle: stabilkan jiwa musuh melalui Syariat → Ma'rifat.</p>
 
