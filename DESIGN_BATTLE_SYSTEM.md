@@ -1,245 +1,268 @@
-# Tasawuf RPG Battle System - Game Design Blueprint
+# Tasawuf Battle Loop — System Design Blueprint
 
-## 1) Core Loop
+## 1) Core Identity
 
-1. **Pre-Battle Narrative Event**: pemain menerima konteks jiwa musuh (konflik batin, ujian, trigger).
-2. **Intent Phase**: pemain memilih 1 skill utama + 1 niat (modifier kecil).
-3. **Action Phase**: skill dieksekusi ke atribut `Ego`, `Nafs`, `Calm`.
-4. **Enemy Reaction Phase**: enemy AI memperbarui state jiwa dan memilih aksi phase.
-5. **Resolution Phase**: cek combo chain, phase shift, dan win condition transformasi.
+**Genre:** Decision-based spiritual roguelike (turn-based loop).  
+**Bukan quiz:** pemain tidak menjawab teori, tapi membaca keadaan batin lalu memilih **aksi/ability** paling tepat.
 
-Win condition utama: bukan HP nol, tapi **Stabilized Soul** (`Ego <= 20`, `Nafs <= 20`, `Calm >= 80`) selama 2 turn berturut-turut.
-
----
-
-## 2) Attribute Model
-
-Skala atribut: `0 - 100`
-
-- **Ego**: dorongan merasa diri pusat.
-- **Nafs**: impuls keinginan reaktif.
-- **Calm**: kejernihan dan stabilitas batin.
-
-Derived metrics:
-
-- `Turmoil = (Ego + Nafs) - Calm`
-- `Harmony = Calm - abs(Ego - Nafs)/2`
-
-Interpretasi:
-
-- `Turmoil` tinggi => musuh agresif dan sulit diprediksi.
-- `Harmony` tinggi => mudah masuk fase Balance/Calm Awakening.
+Tone:
+- Mystical
+- Calm
+- Introspective
+- RPG-like
+- Slightly abstract but playable
 
 ---
 
-## 3) Enemy Phase State Machine
+## 2) Primary Loop (Single Resource Model)
 
-### Phase Definitions
+### Resource
+- **Tasawuf Level**: `0..100`
+- Start: `50`
 
-1. **Ego Surge**
-   - Trigger: `Ego >= 70` dan `Ego > Nafs`
-   - Efek: skill musuh lebih menyasar merendahkan Calm pemain.
+### Win/Lose
+- **WIN (Ma'rifat achieved):** `Tasawuf Level >= 100`
+- **LOSE (Return to nafs state):** `Tasawuf Level <= 0`
 
-2. **Nafs Dominance**
-   - Trigger: `Nafs >= 70` dan `Nafs >= Ego`
-   - Efek: multi-hit impulsif, chance debuff fokus pemain.
-
-3. **Calm Awakening**
-   - Trigger: `Calm >= 65` dan `Ego <= 45` dan `Nafs <= 45`
-   - Efek: musuh dapat self-purify, membuka peluang convert state.
-
-4. **Balance**
-   - Trigger: selisih antar atribut kecil (`max-min <= 20`)
-   - Efek: musuh adaptif, tidak terlalu ekstrem.
-
----
-
-## 4) Enemy AI Rules (Auto-Reactive)
-
-Setiap akhir turn, lakukan update natural:
-
-```text
-if Nafs > 60: Ego += 8
-if Ego > 60: Calm -= 10
-if Calm > 60:
-  Ego -= 7
-  Nafs -= 7
-
-Clamp all values to [0, 100]
-```
-
-Tambahkan dinamika agar "hidup":
-
-- Noise ringan per turn: `rand(-2..+2)` pada 1 atribut acak.
-- Memory 3 turn terakhir pemain:
-  - Jika pemain spam skill penekan Ego, musuh beradaptasi (resist EgoDown +20% 2 turn).
-  - Jika pemain variasi antar stage, musuh kehilangan adaptasi (resist reset).
+### Turn Structure
+1. **Narrative Event Trigger**
+   - Sistem generate 1 situasi hidup/batin (1–3 kalimat).
+   - Event tidak memuat jawaban eksplisit.
+2. **Skill Choice System**
+   - Tampilkan 4 skill acak dari pool.
+   - Tepat 1 skill adalah “truly effective match”.
+   - 3 skill lain bersifat misleading tapi tetap plausible.
+3. **Resolution**
+   - Pilihan tepat: `+20 Tasawuf Level`
+   - Pilihan kurang tepat: `-10 Tasawuf Level`
+4. **Loop Continues**
+   - Generate event baru.
+   - Randomize 4 skill baru.
 
 ---
 
-## 5) Player Skill Framework (per Stage)
+## 3) Event Design Grammar
 
-## Syariat (Basic Ritual Actions)
+Setiap event memiliki struktur berikut:
 
-1. **Ablution Guard**
-   - Ego -8, Nafs -6, Calm +10
-   - Cost rendah, fondasi combo pembuka.
+1. **Context Trigger** (apa yang terjadi)  
+2. **Inner Tension** (tarik-menarik batin yang muncul)  
+3. **Hidden Direction** (jenis respon paling tepat, tanpa mengatakannya terang-terangan)
 
-2. **Takbir Resonance**
-   - Ego -10, Calm +6
-   - Bonus +20% efek jika dipakai setelah Ablution Guard.
+Contoh style:
+> Setelah dipuji panjang lebar, dadamu terasa ringan tapi juga haus validasi berikutnya. Di satu sisi ingin bersyukur, di sisi lain kamu mulai meremehkan orang lain diam-diam.
 
-3. **Sujud Anchor**
-   - Nafs -12, Calm +8
-   - Jika enemy di Nafs Dominance: tambahan Nafs -6.
-
-## Tarekat (Self-Discipline Combat)
-
-1. **Nafs Bind Sigil**
-   - Nafs -16, Ego -4
-   - Menaikkan resist pemain terhadap debuff impuls.
-
-2. **Istiqamah Pulse**
-   - Calm +14
-   - Stack buff "Steadfast" (max 3), tiap stack +5% keberhasilan combo.
-
-3. **Mujahadah Strike**
-   - Ego -12, Nafs -10, Calm -2
-   - High impact, tapi ada tradeoff fokus.
-
-## Hakikat (Insight & Inner Truth)
-
-1. **Veil Rend**
-   - Menurunkan atribut tertinggi musuh -18.
-   - Jika Turmoil > 40, turunkan tambahan -6.
-
-2. **Mirror of Reality**
-   - Menyamakan Ego dan Nafs ke nilai rata-rata (pembalikan ekstrem).
-   - Calm +8.
-
-3. **Truth Awakening**
-   - Calm +18, Ego -8
-   - Jika musuh di Ego Surge, langsung paksa ke Balance (1 turn).
-
-## Ma'rifat (Unity State)
-
-1. **Presence Merge**
-   - Konversi 20% total (Ego+Nafs) menjadi Calm.
-
-2. **Ego Collapse**
-   - Ego -22
-   - Jika Calm >= 70, tambahan Nafs -10.
-
-3. **Unity Horizon**
-   - Finisher transformasi.
-   - Syarat: combo chain >= 4 dan Harmony musuh >= 40.
-   - Efek: set state ke Calm Awakening + lock 1 turn.
+Tag event (untuk mapping skill):
+- `ANGER`
+- `PRIDE_SUBTLE`
+- `DOUBT`
+- `LAZINESS`
+- `SHOW_OFF`
+- `DESIRE`
+- `ENVY`
+- `GRIEF`
+- `RITUAL_DRYNESS`
+- `SOCIAL_PRESSURE`
+- `SELF_BLAME`
+- `DISTRACTION`
 
 ---
 
-## 6) Combo System Logic
+## 4) Skill Pool Architecture (RPG Ability Flavor)
 
-Gunakan tag pada skill:
+> Skill ditulis seperti ability, bukan jawaban teori.
 
-- `Purify` (Syariat)
-- `Discipline` (Tarekat)
-- `Insight` (Hakikat)
-- `Unity` (Ma'rifat)
+### Core Skill Pool (12)
 
-Rule chain:
+1. **Aqua Wudhu Flow** — reset reactivity, grounding body-mind
+2. **Nafs Suppression Protocol** — tahan impuls sesaat
+3. **Ego Disintegration Field** — larutkan kebutuhan merasa lebih tinggi
+4. **Truth Awakening Pulse** — aktifkan kejernihan niat
+5. **Sabr Fortress Stance** — stabilisasi saat tertekan
+6. **Ikhlas Veil Sever** — potong motif pamer tersembunyi
+7. **Shukr Resonance Wave** — transmute nikmat jadi syukur sadar
+8. **Tawakkal Anchor** — lepaskan kontrol berlebih pada hasil
+9. **Muhasabah Mirror Scan** — audit diri tanpa drama
+10. **Dzikir Echo Spiral** — tenangkan noise pikiran berulang
+11. **Rahmah Outflow Burst** — ubah defensif jadi welas asih
+12. **Niyyah Recalibration Matrix** — set ulang orientasi tindakan
 
-- Combo aktif jika 2-5 turn berurutan mengikuti urutan naik stage (boleh skip 1 stage sekali).
-- Multiplier efek debuff enemy:
-  - Chain 2: +10%
-  - Chain 3: +20%
-  - Chain 4: +35%
-  - Chain 5: +50% + trigger “Soul Breakthrough”
-
-Special chain examples:
-
-1. **Ritual to Discipline**: Ablution Guard -> Nafs Bind Sigil
-   - Bonus: Nafs tambahan -8.
-
-2. **Discipline to Insight**: Istiqamah Pulse -> Veil Rend
-   - Bonus: hilangkan adaptasi resist enemy.
-
-3. **Full Path Chain**: Syariat -> Tarekat -> Hakikat -> Ma'rifat
-   - Bonus: satu kali ignore phase immunity.
+### Balance Rules
+- Setiap skill memiliki **dominant counter-tag** (1 utama) + **secondary utility** (1 ringan).
+- Misleading skills harus punya overlap tema agar terlihat masuk akal.
+- Jangan menampilkan 4 skill yang semuanya cocok sempurna atau semuanya jelas salah.
 
 ---
 
-## 7) Boss Fight Design (per Stage)
+## 5) Correct Skill Mapping Logic
 
-## Stage 1 Boss - "The Loud Self" (Syariat)
-- Start: Ego 75, Nafs 55, Calm 25 (Ego Surge)
-- Fokus pemain: belajar stabilisasi dasar.
-- Gimmick: setiap 3 turn, boss cast "Self-Justification" (Ego +12).
+### Mapping Table (contoh inti)
+- `PRIDE_SUBTLE` -> **Ego Disintegration Field**
+- `SHOW_OFF` -> **Ikhlas Veil Sever**
+- `ANGER` -> **Sabr Fortress Stance** atau **Dzikir Echo Spiral** (pilih 1 sebagai hard-counter per event)
+- `DOUBT` -> **Truth Awakening Pulse**
+- `DESIRE` -> **Nafs Suppression Protocol**
+- `ENVY` -> **Shukr Resonance Wave**
+- `GRIEF` -> **Tawakkal Anchor** atau **Rahmah Outflow Burst** (event-specific)
+- `RITUAL_DRYNESS` -> **Niyyah Recalibration Matrix**
+- `SELF_BLAME` -> **Muhasabah Mirror Scan**
+- `DISTRACTION` -> **Dzikir Echo Spiral**
 
-## Stage 2 Boss - "The Burning Desire" (Tarekat)
-- Start: Ego 48, Nafs 82, Calm 20 (Nafs Dominance)
-- Gimmick: nafs burst multi-action saat Nafs > 75.
-- Counter ideal: Nafs Bind Sigil + Istiqamah Pulse loop.
+### Deterministic Generation Rule
+Untuk setiap event:
+- pilih `correctSkill` berdasarkan primary tag,
+- pilih 3 `decoySkills` dari:
+  - secondary tag family,
+  - emotional-neighbor tag,
+  - one wildcard spiritual-sounding skill.
 
-## Stage 3 Boss - "The Veiled Mind" (Hakikat)
-- Start: Ego 62, Nafs 62, Calm 38 (Balance tidak stabil)
-- Gimmick: swap Ego<->Nafs acak; ilusi mengubah prioritas target skill.
-- Counter ideal: Mirror of Reality + Truth Awakening.
-
-## Stage 4 Boss - "The Final Separation" (Ma'rifat)
-- Start: Ego 68, Nafs 68, Calm 68 (Transcendent Balance)
-- Gimmick: phase cycling tiap turn; kebal 1 tipe chain berulang.
-- Win: aktifkan Unity Horizon setelah Full Path Chain.
-
----
-
-## 8) Narrative Event Before Battle (Templates)
-
-Gunakan format 3 beat cepat (10-20 detik):
-
-1. **Trigger**: "Ia dihina di depan banyak orang."  
-2. **Inner Voice**: "Aku harus membuktikan diriku lebih tinggi."  
-3. **Distortion Reveal**: Ego naik, Calm retak.
-
-Template lain:
-
-- Godaan kesenangan instan -> Nafs spike.
-- Kehilangan makna -> Calm drop.
-- Momen hening dzikir -> Calm rise pembuka fase Balance.
+Dengan ini, pilihan tetap terasa “abu-abu manusiawi”, tapi sistem tetap punya evaluasi tegas.
 
 ---
 
-## 9) Progression Design
+## 6) Difficulty Scaling (Roguelike Progression)
 
-- Syariat: unlock 3 skill dasar + 1 slot niat.
-- Tarekat: unlock discipline buff, combo tutorial, adaptasi enemy dikenalkan.
-- Hakikat: unlock skill manipulasi state (redistribute, force phase).
-- Ma'rifat: unlock finisher transformasi + win condition advanced.
+### Tiering by Turn Index
+- **Tier 1 (Turn 1–5):** tag tunggal, konflik jelas
+- **Tier 2 (Turn 6–10):** tag campuran (mis. `PRIDE_SUBTLE + SHOW_OFF`)
+- **Tier 3 (Turn 11–15):** noisy events (emosi berlapis + social pressure)
+- **Tier 4 (Turn 16+):** paradox events (aksi baik dengan motif keliru)
 
-Meta growth:
-
-- **Soul Lens Tree**: upgrade efek calm conversion, resist ego backlash, chain retention.
-- **Encounter Mutation**: enemy archetype sama tapi pattern fase berbeda tiap run.
+### Scaling Dimensions
+1. **Narrative Ambiguity** naik
+2. **Decoy Quality** naik (lebih plausible)
+3. **Skill Similarity** naik
+4. **Punishment Streak** opsional:
+   - salah 2x beruntun -> event berikutnya lebih “blur”
+   - benar 3x beruntun -> berikan “Clarity Hint” singkat
 
 ---
 
-## 10) Implementation Notes (Web Turn System)
+## 7) Boss Variant System
 
-Data schema minimum:
+Setiap 5 turn, bisa muncul **Inner Boss Event** (tanpa HP tradisional).
 
-```json
-{
-  "enemy": {"ego": 70, "nafs": 50, "calm": 30, "phase": "EGO_SURGE"},
-  "player": {"stage": "TAREKAT", "combo": 2, "buffs": ["STEADFAST_1"]},
-  "battle": {"turn": 5, "history": ["ABLU_GUARD", "NAFS_BIND"]}
+### Boss 1: The Perfumed Ego
+- Tema: amal diboncengi kebutuhan dipuji.
+- Durasi: 3 turn phase.
+- Win Boss Rule: benar minimal 2/3 pilihan.
+- Reward: +15 bonus Tasawuf Level.
+
+### Boss 2: The Whispering Doubt
+- Tema: keraguan spiritual yang terlihat rasional.
+- Gimmick: 2 skill decoy sangat mirip fungsi.
+
+### Boss 3: The Golden Distraction
+- Tema: sibuk kebaikan teknis, hilang kehadiran hati.
+- Gimmick: semua opsi terdengar “baik”, tapi hanya 1 tepat konteks.
+
+Boss gagal tidak langsung game over, tetapi memberi penalti tambahan `-10` sekali.
+
+---
+
+## 8) Data Schema (Implementation-Friendly)
+
+```ts
+interface EventCard {
+  id: string;
+  tier: 1 | 2 | 3 | 4;
+  tags: string[];           // primary tag di index 0
+  text: string;             // 1-3 kalimat
+  correctSkillId: string;
+}
+
+interface Skill {
+  id: string;
+  name: string;
+  counterTags: string[];    // urutan prioritas
+  description: string;
+  rarity: "common" | "rare";
+}
+
+interface GameState {
+  turn: number;
+  tasawufLevel: number;     // 0..100
+  streakCorrect: number;
+  streakWrong: number;
+  history: { eventId: string; chosenSkillId: string; correct: boolean }[];
 }
 ```
 
-Tick order:
-1) Player action  
-2) Immediate skill effects  
-3) Combo resolution  
-4) Enemy AI natural rules  
-5) Enemy action  
-6) Phase recalculation  
-7) Win/Lose/Transform check
+Resolution:
 
+```ts
+if (chosenSkillId === event.correctSkillId) {
+  tasawufLevel += 20;
+  streakCorrect += 1;
+  streakWrong = 0;
+} else {
+  tasawufLevel -= 10;
+  streakWrong += 1;
+  streakCorrect = 0;
+}
+
+tasawufLevel = Math.max(0, Math.min(100, tasawufLevel));
+```
+
+---
+
+## 9) Content Pipeline for 100+ Events
+
+Target minimal:
+- 12 tag x 10 event per tag = **120 events**.
+
+Template produksi cepat:
+1. Tulis 10 real-life triggers per tag.
+2. Tambah 2 kalimat inner tension.
+3. Set `primaryTag`.
+4. Tentukan `correctSkillId` dari mapping.
+5. Generate 3 decoy by rule.
+6. QA pass: pastikan event tidak menyebut jawaban.
+
+Quality checklist:
+- [ ] 1–3 kalimat
+- [ ] natural & manusiawi
+- [ ] tidak menggurui
+- [ ] bukan pertanyaan ujian
+- [ ] exactly 1 effective skill
+
+---
+
+## 10) UX Notes (Web Turn-Based)
+
+Per turn UI:
+- Panel kiri: narrative event
+- Panel kanan: 4 skill cards (ability art + one-line flavor)
+- Footer: Tasawuf meter + turn counter + state label
+
+Feedback copy:
+- Correct: “Hatimu menemukan arah yang tepat.”
+- Wrong: “Langkahmu baik, namun belum menyentuh akar.”
+
+Gunakan feedback yang lembut; hindari nuansa menghukum keras.
+
+---
+
+## 11) Example Turn
+
+**Event:**
+“Kamu membantu seseorang, lalu diam-diam terus mengecek apakah orang lain memperhatikan. Saat tak ada yang memuji, semangatmu turun.”
+
+**4 Skill Options:**
+1. Ikhlas Veil Sever ✅ (correct)
+2. Rahmah Outflow Burst
+3. Sabr Fortress Stance
+4. Tawakkal Anchor
+
+**Result:**
+- pilih #1 -> `+20`
+- lainnya -> `-10`
+
+---
+
+## 12) Future Expansion
+
+- Relic system: “Tasbih of Stillness” (sekali batal penalti)
+- Branching path: khalwat / khidmah / ilmu
+- Meta unlock skill cosmetics
+- Daily seed challenge untuk replayability
