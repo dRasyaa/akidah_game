@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess × Iman — Battle of the Soul</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ROOT & RESET
+============================================================ */
+:root {
+  /* Chess Theme */
+  --cl: #f0d9b5;
+  --cd: #b58863;
+  --cborder: #5c3f1e;
+  --csel: rgba(255,215,0,0.7);
+  --cmove: rgba(20,120,0,0.5);
+  --ccap: rgba(220,50,30,0.55);
+
+  /* LoL Battle Theme */
+  --lbg: #06060f;
+  --lgold: #c89b3c;
+  --lgold2: #f0d070;
+  --lpurple: #7b2fbe;
+  --lred: #c0392b;
+  --lhealth: #1abc9c;
+  --langer: #e74c3c;
+  --ldim: rgba(200,155,60,0.08);
+
+  --iman-full: #2ecc71;
+  --iman-mid: #f39c12;
+  --iman-low: #e74c3c;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Rajdhani',Arial,sans-serif;
+  background:#1a1a2e;
+  overflow:hidden;
+  height:100vh;width:100vw;
+  user-select:none;
+}
+::-webkit-scrollbar{display:none;}
+
+/* ============================================================
+   SCREENS
+============================================================ */
+.screen{
+  position:absolute;inset:0;
+  display:none;
+  align-items:center;justify-content:center;
+  flex-direction:column;gap:10px;
+}
+.screen.active{display:flex;}
+
+/* ============================================================
+   CHESS SCREEN
+============================================================ */
+#chess-screen{
+  gap:6px;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255,220,150,0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(180,120,60,0.3) 0%, transparent 50%),
+    linear-gradient(160deg,#e8d5b0 0%,#d4b896 40%,#c49a70 100%);
+}
+
+.chess-title{
+  font-family:'Cinzel',serif;
+  font-size:1.2em;font-weight:900;
+  color:var(--cborder);
+  text-shadow:0 2px 8px rgba(0,0,0,0.2);
+  letter-spacing:3px;
+  margin-bottom:2px;
+}
+
+.chess-info{
+  display:flex;gap:12px;align-items:center;
+  background:rgba(255,255,255,0.3);
+  padding:5px 16px;border-radius:30px;
+  border:1px solid rgba(100,60,20,0.2);
+  backdrop-filter:blur(4px);
+}
+.player-tag{
+  padding:4px 12px;border-radius:20px;
+  font-weight:700;font-size:0.85em;letter-spacing:1px;
+  border:2px solid transparent;
+  transition:all 0.3s;
+}
+.player-tag.white{background:#fff;color:#333;border-color:#bbb;}
+.player-tag.black{background:#222;color:#eee;border-color:#555;}
+.player-tag.active{
+  box-shadow:0 0 16px rgba(255,180,0,0.8);
+  border-color:#ffd700;transform:scale(1.06);
+}
+.turn-label{
+  font-family:'Cinzel',serif;
+  font-size:1em;font-weight:700;color:var(--cborder);
+  min-width:120px;text-align:center;
+}
+
+/* Board */
+.board-outer{
+  position:relative;
+  border:4px solid var(--cborder);
+  border-radius:3px;
+  box-shadow:
+    0 12px 40px rgba(0,0,0,0.4),
+    inset 0 0 0 2px rgba(255,230,180,0.3),
+    0 0 0 8px rgba(120,80,30,0.2);
+  transition:transform 0.7s cubic-bezier(0.34,1.2,0.64,1);
+}
+.board-outer.flipped{transform:rotate(180deg);}
+
+.chess-board{
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+}
+.cell{
+  width:58px;height:58px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:2.3em;
+  cursor:pointer;position:relative;
+  transition:background 0.1s,filter 0.15s;
+}
+.cell.light{background:var(--cl);}
+.cell.dark{background:var(--cd);}
+.cell.selected{background:var(--csel)!important;box-shadow:inset 0 0 0 3px rgba(200,160,0,0.8);}
+.cell.valid-move::after{
+  content:'';position:absolute;
+  width:22px;height:22px;
+  border-radius:50%;background:var(--cmove);
+  pointer-events:none;z-index:2;
+}
+.cell.valid-capture{background:var(--ccap)!important;}
+.cell.in-check{
+  background:rgba(255,30,0,0.55)!important;
+  animation:checkPulse 0.6s infinite alternate;
+}
+@keyframes checkPulse{
+  from{background:rgba(255,30,0,0.45)!important;}
+  to{background:rgba(255,30,0,0.75)!important;}
+}
+.cell:hover{filter:brightness(1.12);}
+
+.piece{
+  display:block;line-height:1;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,0.55));
+  transition:transform 0.15s;z-index:3;position:relative;
+  pointer-events:none;
+}
+.board-outer.flipped .piece{transform:rotate(180deg);}
+.board-outer.flipped .cell-lbl{transform:rotate(180deg);}
+
+.cell-lbl{
+  position:absolute;
+  font-size:0.5em;font-weight:600;
+  color:rgba(0,0,0,0.35);
+  pointer-events:none;z-index:1;
+}
+.cell-lbl.rank{top:3px;left:4px;}
+.cell-lbl.file{bottom:2px;right:4px;}
+
+.chess-hint{
+  font-size:0.75em;color:rgba(80,40,0,0.6);
+  text-align:center;max-width:500px;
+  font-style:italic;
+}
+
+/* ============================================================
+   DARE SCREEN
+============================================================ */
+#dare-screen{
+  background:
+    radial-gradient(ellipse at center top, rgba(46,204,113,0.15) 0%, transparent 60%),
+    linear-gradient(180deg,#071a0f 0%,#0a2415 100%);
+}
+
+.dare-card{
+  background:linear-gradient(135deg,rgba(20,60,35,0.95),rgba(8,30,15,0.95));
+  border:2px solid rgba(46,204,113,0.4);
+  border-radius:20px;padding:32px 36px;
+  max-width:460px;text-align:center;
+  box-shadow:0 0 60px rgba(46,204,113,0.12),0 20px 60px rgba(0,0,0,0.5);
+  position:relative;overflow:hidden;
+}
+.dare-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at top center,rgba(46,204,113,0.06) 0%,transparent 60%);
+  pointer-events:none;
+}
+.dare-icon{font-size:3.5em;margin-bottom:8px;}
+.dare-title{
+  font-family:'Cinzel',serif;
+  font-size:1.4em;font-weight:900;
+  color:#2ecc71;letter-spacing:3px;
+  text-transform:uppercase;margin-bottom:16px;
+  text-shadow:0 0 20px rgba(46,204,113,0.5);
+}
+.dare-task{
+  font-size:1.15em;color:#ecf0f1;line-height:1.6;
+  margin-bottom:20px;padding:14px 16px;
+  background:rgba(255,255,255,0.04);
+  border-radius:10px;
+  border-left:3px solid #2ecc71;
+  font-family:'Spectral',serif;font-style:italic;
+}
+.dare-sub{font-size:0.8em;color:rgba(255,255,255,0.4);margin-bottom:20px;}
+.dare-btn{
+  position:relative;z-index:2;
+  background:linear-gradient(135deg,#27ae60,#1e8449);
+  color:white;border:none;
+  padding:13px 32px;border-radius:30px;
+  font-size:1em;font-weight:700;font-family:'Rajdhani',sans-serif;
+  cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;
+  transition:all 0.2s;
+  box-shadow:0 4px 20px rgba(39,174,96,0.4);
+}
+.dare-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(39,174,96,0.5);}
+.dare-btn:active{transform:translateY(0);}
+
+/* ============================================================
+   BATTLE SCREEN
+============================================================ */
+#battle-screen{
+  background:var(--lbg);
+  position:relative;overflow:hidden;
+}
+
+/* Animated rune BG */
+.battle-bg{position:absolute;inset:0;z-index:0;pointer-events:none;}
+.rune{
+  position:absolute;border-radius:50%;
+  border:1px solid rgba(200,155,60,0.12);
+  top:50%;left:50%;
+}
+.rune-1{width:700px;height:700px;margin:-350px 0 0 -350px;animation:runeR 25s linear infinite;}
+.rune-2{width:480px;height:480px;margin:-240px 0 0 -240px;animation:runeR 18s linear infinite reverse;border-color:rgba(123,47,190,0.15);}
+.rune-3{width:260px;height:260px;margin:-130px 0 0 -130px;animation:runeR 12s linear infinite;border-color:rgba(200,155,60,0.2);}
+@keyframes runeR{to{transform:rotate(360deg);}}
+
+.battle-vignette{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.7) 100%);
+}
+
+.battle-content{
+  position:relative;z-index:2;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  width:100%;max-width:680px;padding:12px 16px;
+}
+
+/* Status bars */
+.status-row{display:flex;gap:12px;width:100%;}
+.bar-group{flex:1;}
+.bar-lbl{
+  font-size:0.72em;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;margin-bottom:3px;color:var(--lgold);
+}
+.bar-track{
+  height:16px;background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.12);border-radius:8px;overflow:hidden;
+}
+.bar-fill{
+  height:100%;border-radius:8px;transition:width 0.5s ease;
+  position:relative;
+}
+.bar-fill::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent);
+  animation:shine 2.5s infinite;
+}
+@keyframes shine{from{transform:translateX(-150%);}to{transform:translateX(200%);}}
+
+.iman-bar{background:linear-gradient(90deg,#1a9e52,#2ecc71);}
+.iman-bar.mid{background:linear-gradient(90deg,#c47d10,#f39c12);}
+.iman-bar.low{background:linear-gradient(90deg,#961c12,#e74c3c);animation:imanPulse 0.8s infinite alternate;}
+@keyframes imanPulse{from{filter:brightness(1);}to{filter:brightness(1.4);}}
+
+.iblis-hp-bar{background:linear-gradient(90deg,#6c1e8d,#c0392b);}
+.anger-bar{background:linear-gradient(90deg,#c0392b,#ff6b35);}
+
+/* Characters */
+.char-row{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  width:100%;padding:0 10px;
+}
+.char-player,.char-iblis{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.player-sprite{
+  font-size:3.8em;
+  filter:drop-shadow(0 0 12px rgba(46,204,113,0.6));
+  animation:playerFloat 2s ease-in-out infinite;
+}
+@keyframes playerFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+
+.iblis-sprite{
+  font-size:4.8em;
+  filter:drop-shadow(0 0 20px rgba(123,47,190,0.8));
+  animation:iblisBob 1.8s ease-in-out infinite;
+  position:relative;
+}
+@keyframes iblisBob{
+  0%,100%{transform:translateY(0) rotate(-4deg);}
+  50%{transform:translateY(-12px) rotate(4deg);}
+}
+.iblis-badge{
+  background:linear-gradient(135deg,rgba(123,47,190,0.9),rgba(60,20,90,0.9));
+  color:white;font-size:0.65em;font-weight:700;
+  padding:3px 10px;border-radius:10px;
+  border:1px solid var(--lgold);letter-spacing:1px;
+  text-transform:uppercase;white-space:nowrap;
+  box-shadow:0 0 10px rgba(123,47,190,0.5);
+}
+.char-name{font-size:0.72em;color:var(--lgold);font-weight:600;letter-spacing:1px;}
+
+.vs-badge{
+  font-family:'Cinzel',serif;
+  font-size:2em;font-weight:900;color:var(--lgold);
+  text-shadow:0 0 20px var(--lgold);
+  letter-spacing:4px;
+  align-self:center;
+}
+
+/* Battle Phase Panel */
+.battle-panel{
+  width:100%;
+  background:rgba(4,4,16,0.92);
+  border:1px solid rgba(200,155,60,0.25);
+  border-radius:10px;padding:12px 14px;
+  box-shadow:0 0 30px rgba(200,155,60,0.05),inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+.phase-title{
+  font-family:'Cinzel',serif;
+  font-size:0.95em;font-weight:900;
+  color:var(--lgold);text-transform:uppercase;letter-spacing:2px;
+  text-align:center;margin-bottom:6px;
+  text-shadow:0 0 12px var(--lgold);
+}
+.battle-msg{
+  text-align:center;font-size:0.85em;color:#ccc;
+  margin-bottom:6px;min-height:2.6em;line-height:1.3;
+  font-family:'Spectral',serif;
+}
+
+/* Timer */
+.timer-track{height:5px;background:rgba(255,255,255,0.08);border-radius:3px;margin-bottom:8px;overflow:hidden;}
+.timer-fill{height:100%;background:linear-gradient(90deg,#2ecc71,#f39c12,#e74c3c);border-radius:3px;transition:width 1s linear;}
+.timer-txt{text-align:center;font-size:0.7em;color:rgba(255,255,255,0.45);margin-bottom:8px;letter-spacing:1px;}
+
+/* Skill grid */
+.skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.skill-btn{
+  background:linear-gradient(135deg,rgba(20,18,40,0.95),rgba(12,10,25,0.95));
+  border:1px solid rgba(200,155,60,0.3);border-radius:7px;
+  padding:9px 11px;color:white;cursor:pointer;
+  transition:all 0.2s;text-align:left;overflow:hidden;position:relative;
+}
+.skill-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(200,155,60,0.04),transparent);
+  opacity:0;transition:opacity 0.2s;
+}
+.skill-btn:hover{
+  border-color:var(--lgold);transform:translateY(-2px);
+  box-shadow:0 4px 20px rgba(200,155,60,0.25);
+}
+.skill-btn:hover::before{opacity:1;}
+.skill-btn:active{transform:translateY(0);}
+.sk-name{font-size:0.82em;font-weight:700;color:var(--lgold2);letter-spacing:0.5px;}
+.sk-cat{font-size:0.62em;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;}
+.sk-cat.syariat{color:#5dade2;}
+.sk-cat.tarekat{color:#58d68d;}
+.sk-cat.hakikat{color:#f8c471;}
+.sk-cat.makrifat{color:#bb8fce;}
+.sk-desc{font-size:0.6em;color:rgba(255,255,255,0.35);margin-top:2px;}
+
+/* Defense grid */
+.def-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.def-btn{
+  border-radius:7px;padding:11px 10px;
+  color:white;cursor:pointer;text-align:center;
+  font-weight:800;font-size:0.85em;letter-spacing:1px;
+  transition:all 0.2s;border:1px solid transparent;
+  background:rgba(10,15,10,0.9);
+}
+.def-btn:hover{transform:translateY(-2px);}
+.def-btn:active{transform:translateY(0);}
+.def-btn.syariat-d{border-color:rgba(93,173,226,0.5);color:#5dade2;background:rgba(5,15,25,0.9);}
+.def-btn.syariat-d:hover{border-color:#5dade2;box-shadow:0 4px 15px rgba(93,173,226,0.3);}
+.def-btn.tarekat-d{border-color:rgba(88,214,141,0.5);color:#58d68d;background:rgba(5,20,12,0.9);}
+.def-btn.tarekat-d:hover{border-color:#58d68d;box-shadow:0 4px 15px rgba(88,214,141,0.3);}
+.def-btn.hakikat-d{border-color:rgba(248,196,113,0.5);color:#f8c471;background:rgba(20,15,5,0.9);}
+.def-btn.hakikat-d:hover{border-color:#f8c471;box-shadow:0 4px 15px rgba(248,196,113,0.3);}
+.def-btn.makrifat-d{border-color:rgba(187,143,206,0.5);color:#bb8fce;background:rgba(15,5,20,0.9);}
+.def-btn.makrifat-d:hover{border-color:#bb8fce;box-shadow:0 4px 15px rgba(187,143,206,0.3);}
+.def-sub{font-size:0.6em;opacity:0.55;font-weight:400;margin-top:3px;letter-spacing:0px;}
+
+/* ============================================================
+   RESULT SCREEN
+============================================================ */
+#result-screen{
+  background:radial-gradient(ellipse at center,#0d0a1e 0%,#050510 100%);
+}
+.result-wrap{text-align:center;}
+.result-emoji{font-size:5em;margin-bottom:10px;display:block;}
+.result-title{
+  font-family:'Cinzel',serif;
+  font-size:2.8em;font-weight:900;letter-spacing:4px;text-transform:uppercase;
+  margin-bottom:8px;
+}
+.result-title.win{color:var(--lgold);text-shadow:0 0 40px var(--lgold);}
+.result-title.lose{color:var(--lred);text-shadow:0 0 40px var(--lred);}
+.result-sub{font-size:1.1em;color:rgba(255,255,255,0.6);margin-bottom:28px;}
+.result-btn{
+  background:linear-gradient(135deg,var(--lgold),#8a6520);
+  color:#0a0a0a;border:none;
+  padding:14px 38px;border-radius:30px;
+  font-family:'Cinzel',serif;
+  font-size:1em;font-weight:700;cursor:pointer;
+  letter-spacing:2px;text-transform:uppercase;
+  transition:all 0.2s;
+  box-shadow:0 4px 20px rgba(200,155,60,0.4);
+}
+.result-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(200,155,60,0.5);}
+
+/* ============================================================
+   CHECKMATE SCREEN
+============================================================ */
+#checkmate-screen{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.88);
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;
+  z-index:3000;
+}
+#checkmate-screen.active{display:flex;}
+.cm-title{
+  font-family:'Cinzel',serif;
+  font-size:3em;font-weight:900;
+  color:var(--lgold);letter-spacing:5px;
+  text-shadow:0 0 40px var(--lgold),0 0 80px rgba(200,155,60,0.4);
+  text-align:center;animation:cmGlow 1.5s infinite alternate;
+}
+@keyframes cmGlow{from{text-shadow:0 0 30px var(--lgold);}to{text-shadow:0 0 60px var(--lgold),0 0 100px rgba(255,200,0,0.5);}}
+.cm-sub{font-size:1.4em;color:rgba(255,255,255,0.7);}
+
+/* ============================================================
+   GLOBAL OVERLAYS
+============================================================ */
+#fx-canvas{position:fixed;inset:0;pointer-events:none;z-index:1000;}
+.flash{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity 0.08s;z-index:999;}
+#flash-red{background:radial-gradient(ellipse at center,rgba(200,0,0,0.65),rgba(100,0,0,0.3) 60%,transparent 100%);}
+#flash-gold{background:radial-gradient(ellipse at center,rgba(255,200,0,0.55),transparent 70%);}
+#flash-purple{background:radial-gradient(ellipse at center,rgba(140,0,220,0.55),transparent 70%);}
+
+#fire-overlay{
+  position:fixed;inset:0;pointer-events:none;z-index:998;opacity:0;
+  transition:opacity 1.2s;
+  background:
+    radial-gradient(ellipse at 0% 100%,rgba(255,80,0,0.6) 0%,transparent 40%),
+    radial-gradient(ellipse at 100% 100%,rgba(255,50,0,0.6) 0%,transparent 40%),
+    radial-gradient(ellipse at 50% 100%,rgba(200,30,0,0.4) 0%,transparent 35%),
+    radial-gradient(ellipse at 0% 0%,rgba(180,20,0,0.25) 0%,transparent 30%),
+    radial-gradient(ellipse at 100% 0%,rgba(180,20,0,0.25) 0%,transparent 30%);
+}
+#fire-overlay.ember::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(255,30,0,0.12) 100%);
+  animation:emberPulse 0.8s infinite alternate;
+}
+@keyframes emberPulse{from{opacity:0.6;}to{opacity:1;}}
+
+.notif{
+  position:fixed;top:18px;left:50%;transform:translateX(-50%);
+  background:rgba(6,6,20,0.96);border:2px solid var(--lgold);border-radius:14px;
+  padding:10px 24px;font-size:0.95em;font-weight:700;color:var(--lgold);
+  letter-spacing:1px;z-index:900;display:none;text-align:center;
+  font-family:'Cinzel',serif;
+  box-shadow:0 0 20px rgba(200,155,60,0.3);
+  animation:notifIn 0.3s ease;
+}
+@keyframes notifIn{from{transform:translateX(-50%) translateY(-15px);opacity:0;}to{transform:translateX(-50%) translateY(0);opacity:1;}}
+
+@keyframes screenShake{
+  0%,100%{transform:translate(0,0);}
+  10%,50%,90%{transform:translate(-8px,-3px);}
+  20%,60%{transform:translate(8px,3px);}
+  30%,70%{transform:translate(-6px,4px);}
+  40%,80%{transform:translate(6px,-4px);}
+}
+body.shaking{animation:screenShake 0.5s ease;}
+
+.ultimate-overlay{
+  position:fixed;inset:0;
+  background:rgba(180,0,0,0.35);
+  display:none;align-items:center;justify-content:center;
+  z-index:1200;pointer-events:none;
+  animation:ultFlash 0.25s infinite;
+}
+.ultimate-overlay.active{display:flex;}
+@keyframes ultFlash{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.ult-text{
+  font-family:'Cinzel',serif;
+  font-size:3.2em;font-weight:900;color:#ff3a3a;
+  text-shadow:0 0 30px #ff0000,0 0 60px #ff0000;
+  letter-spacing:5px;text-transform:uppercase;
+  animation:ultPulse 0.25s infinite;
+}
+@keyframes ultPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+
+/* ============================================================
+   NAME INPUT SCREEN
+============================================================ */
+#name-screen{
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(200,155,60,0.15) 0%,transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(123,47,190,0.12) 0%,transparent 50%),
+    linear-gradient(160deg,#06060f 0%,#0d0820 100%);
+}
+.name-card{
+  background:rgba(8,8,22,0.96);
+  border:1px solid rgba(200,155,60,0.35);
+  border-radius:20px;padding:36px 40px;
+  max-width:500px;width:90%;text-align:center;
+  box-shadow:0 0 60px rgba(200,155,60,0.1),0 20px 60px rgba(0,0,0,0.6);
+}
+.name-title{
+  font-family:'Cinzel',serif;
+  font-size:2em;font-weight:900;
+  color:var(--lgold);letter-spacing:4px;text-transform:uppercase;
+  text-shadow:0 0 20px rgba(200,155,60,0.5);
+  margin-bottom:6px;
+}
+.name-subtitle{font-size:0.9em;color:rgba(255,255,255,0.4);margin-bottom:28px;letter-spacing:1px;}
+.name-row{display:flex;gap:14px;margin-bottom:20px;}
+.name-group{flex:1;text-align:left;}
+.name-lbl{
+  font-size:0.75em;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:6px;display:block;
+}
+.name-lbl.w{color:#aaaaaa;}
+.name-lbl.b{color:#888888;}
+.name-input{
+  width:100%;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(200,155,60,0.3);border-radius:8px;
+  padding:10px 14px;color:white;font-size:1em;font-family:'Rajdhani',sans-serif;
+  outline:none;transition:border-color 0.2s;letter-spacing:1px;
+}
+.name-input:focus{border-color:var(--lgold);box-shadow:0 0 12px rgba(200,155,60,0.2);}
+.name-input::placeholder{color:rgba(255,255,255,0.2);}
+.start-btn{
+  background:linear-gradient(135deg,var(--lgold),#8a6520);
+  color:#0a0a0a;border:none;
+  padding:14px 38px;border-radius:30px;
+  font-family:'Cinzel',serif;font-size:1em;font-weight:700;
+  cursor:pointer;letter-spacing:2px;text-transform:uppercase;
+  transition:all 0.2s;box-shadow:0 4px 20px rgba(200,155,60,0.4);
+  margin-top:6px;
+}
+.start-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(200,155,60,0.5);}
+.start-btn:active{transform:translateY(0);}
+
+/* ============================================================
+   COIN TOSS SCREEN
+============================================================ */
+#toss-screen{
+  background:
+    radial-gradient(ellipse at center, rgba(200,155,60,0.08) 0%,transparent 60%),
+    linear-gradient(160deg,#06060f 0%,#0d0820 100%);
+}
+.toss-card{text-align:center;max-width:440px;width:90%;}
+.toss-title{
+  font-family:'Cinzel',serif;
+  font-size:1.6em;font-weight:900;color:var(--lgold);
+  letter-spacing:3px;text-transform:uppercase;
+  text-shadow:0 0 20px rgba(200,155,60,0.5);
+  margin-bottom:6px;
+}
+.toss-sub{font-size:0.85em;color:rgba(255,255,255,0.4);margin-bottom:28px;letter-spacing:1px;}
+.coin-wrap{
+  width:120px;height:120px;margin:0 auto 24px;
+  perspective:600px;
+}
+.coin{
+  width:100%;height:100%;
+  border-radius:50%;
+  position:relative;
+  transform-style:preserve-3d;
+  background:radial-gradient(circle at 35% 35%,#f5d78a,#c89b3c 60%,#8a6520);
+  box-shadow:0 0 30px rgba(200,155,60,0.5),inset 0 -4px 8px rgba(0,0,0,0.4),inset 0 4px 8px rgba(255,255,255,0.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:2.8em;
+  transition:transform 0.1s;
+}
+.coin.flipping{animation:coinFlip 1.6s cubic-bezier(0.4,0,0.2,1) forwards;}
+@keyframes coinFlip{
+  0%{transform:rotateY(0deg) scale(1);}
+  20%{transform:rotateY(360deg) scale(1.1);}
+  40%{transform:rotateY(720deg) scale(1);}
+  60%{transform:rotateY(1080deg) scale(1.05);}
+  80%{transform:rotateY(1440deg) scale(1);}
+  100%{transform:rotateY(1800deg) scale(1);}
+}
+.toss-result{
+  font-family:'Cinzel',serif;
+  font-size:1.1em;font-weight:700;
+  color:rgba(255,255,255,0.7);
+  margin-bottom:20px;min-height:2.5em;letter-spacing:1px;
+}
+.toss-result .highlight{color:var(--lgold);font-size:1.1em;}
+.toss-btn{
+  background:linear-gradient(135deg,var(--lgold),#8a6520);
+  color:#0a0a0a;border:none;
+  padding:13px 32px;border-radius:30px;
+  font-family:'Cinzel',serif;font-size:0.95em;font-weight:700;
+  cursor:pointer;letter-spacing:2px;text-transform:uppercase;
+  transition:all 0.2s;box-shadow:0 4px 20px rgba(200,155,60,0.4);
+  display:none;
+}
+.toss-btn:hover{transform:translateY(-2px);}
+.toss-coin-btn{
+  background:transparent;
+  color:var(--lgold);border:2px solid var(--lgold);
+  padding:11px 30px;border-radius:30px;
+  font-family:'Cinzel',serif;font-size:0.95em;font-weight:700;
+  cursor:pointer;letter-spacing:2px;text-transform:uppercase;
+  transition:all 0.2s;
+}
+.toss-coin-btn:hover{background:rgba(200,155,60,0.1);transform:translateY(-2px);}
+
+/* ============================================================
+   FROZEN TURN POPUP
+============================================================ */
+#frozen-popup{
+  position:fixed;inset:0;background:rgba(0,0,30,0.88);
+  display:none;align-items:center;justify-content:center;
+  z-index:2500;
+}
+#frozen-popup.active{display:flex;}
+.frozen-card{
+  background:linear-gradient(135deg,rgba(20,10,60,0.97),rgba(5,5,20,0.97));
+  border:2px solid rgba(100,60,220,0.6);border-radius:20px;
+  padding:32px 40px;text-align:center;max-width:420px;
+  box-shadow:0 0 60px rgba(80,40,180,0.25);
+}
+.frozen-icon{font-size:4em;margin-bottom:10px;}
+.frozen-title{
+  font-family:'Cinzel',serif;font-size:1.4em;font-weight:900;
+  color:#a070ff;letter-spacing:3px;text-transform:uppercase;
+  text-shadow:0 0 20px rgba(160,112,255,0.6);
+  margin-bottom:10px;
+}
+.frozen-msg{font-size:1em;color:rgba(255,255,255,0.7);margin-bottom:20px;line-height:1.5;}
+.frozen-btn{
+  background:linear-gradient(135deg,#7b2fbe,#4a1a7a);
+  color:white;border:none;
+  padding:12px 28px;border-radius:25px;
+  font-family:'Cinzel',serif;font-size:0.9em;font-weight:700;
+  cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;
+  transition:all 0.2s;
+}
+.frozen-btn:hover{transform:translateY(-2px);}
+
+/* ============================================================
+   BOTH FAIL POPUP
+============================================================ */
+#both-fail-popup{
+  position:fixed;inset:0;background:rgba(20,0,0,0.9);
+  display:none;align-items:center;justify-content:center;
+  z-index:2500;
+}
+#both-fail-popup.active{display:flex;}
+.bothfail-card{
+  background:linear-gradient(135deg,rgba(40,10,10,0.97),rgba(10,5,5,0.97));
+  border:2px solid rgba(220,60,60,0.4);border-radius:20px;
+  padding:32px 40px;text-align:center;max-width:460px;
+  box-shadow:0 0 60px rgba(180,30,30,0.2);
+}
+.bothfail-icon{font-size:4em;margin-bottom:10px;}
+.bothfail-title{
+  font-family:'Cinzel',serif;font-size:1.5em;font-weight:900;
+  color:#e74c3c;letter-spacing:3px;text-transform:uppercase;
+  text-shadow:0 0 20px rgba(231,76,60,0.5);
+  margin-bottom:10px;
+}
+.bothfail-msg{font-size:0.95em;color:rgba(255,255,255,0.65);margin-bottom:20px;line-height:1.6;}
+.bothfail-btn{
+  background:linear-gradient(135deg,#c0392b,#7b1a12);
+  color:white;border:none;
+  padding:12px 28px;border-radius:25px;
+  font-family:'Cinzel',serif;font-size:0.9em;font-weight:700;
+  cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;
+  transition:all 0.2s;
+}
+.bothfail-btn:hover{transform:translateY(-2px);}
+
+/* Frozen turn banner on chess screen */
+.frozen-banner{
+  background:linear-gradient(135deg,rgba(100,60,220,0.9),rgba(60,20,140,0.9));
+  border:1px solid rgba(160,112,255,0.5);
+  border-radius:10px;padding:8px 20px;
+  font-size:0.9em;font-weight:700;color:#c0a0ff;letter-spacing:1.5px;
+  text-transform:uppercase;display:none;
+  box-shadow:0 0 20px rgba(120,80,220,0.3);
+}
+.frozen-banner.show{display:block;}
+</style>
+</head>
+<body>
+
+<!-- Global overlays -->
+<canvas id="fx-canvas"></canvas>
+<div class="flash" id="flash-red"></div>
+<div class="flash" id="flash-gold"></div>
+<div class="flash" id="flash-purple"></div>
+<div id="fire-overlay"></div>
+<div class="notif" id="notif"></div>
+<div class="ultimate-overlay" id="ult-overlay"><div class="ult-text">⚡ IBLIS ULTIMATE ⚡</div></div>
+
+<!-- ============================
+     NAME INPUT SCREEN
+============================= -->
+<div class="screen active" id="name-screen">
+  <div class="name-card">
+    <div class="name-title">⚔️ Chess × Iman</div>
+    <div class="name-subtitle">Masukkan nama kedua pemain</div>
+    <div class="name-row">
+      <div class="name-group">
+        <span class="name-lbl w">♟ Pemain 1</span>
+        <input class="name-input" id="name-p1" placeholder="Nama Pemain 1" maxlength="16">
+      </div>
+      <div class="name-group">
+        <span class="name-lbl b">♟ Pemain 2</span>
+        <input class="name-input" id="name-p2" placeholder="Nama Pemain 2" maxlength="16">
+      </div>
+    </div>
+    <button class="start-btn" id="name-next-btn">🎲 Kocok Bidak!</button>
+  </div>
+</div>
+
+<!-- ============================
+     COIN TOSS SCREEN
+============================= -->
+<div class="screen" id="toss-screen">
+  <div class="toss-card">
+    <div class="toss-title">🪙 Kocok Bidak</div>
+    <div class="toss-sub">Lempar koin untuk menentukan warna bidak</div>
+    <div class="coin-wrap"><div class="coin" id="toss-coin">🪙</div></div>
+    <div class="toss-result" id="toss-result">Siap dikocok!</div>
+    <button class="toss-coin-btn" id="toss-flip-btn">🎲 Lempar Koin!</button>
+    <button class="toss-btn" id="toss-start-btn">⚔️ Mulai Pertempuran!</button>
+  </div>
+</div>
+
+<!-- ============================
+     CHESS SCREEN
+============================= -->
+<div class="screen" id="chess-screen">
+  <div class="chess-title">♟ Chess × Iman ♟</div>
+  <div class="chess-info">
+    <div class="player-tag white active" id="tag-white">⬜ <span id="chess-name-white">Putih</span></div>
+    <div class="turn-label" id="turn-label">Giliran Putih</div>
+    <div class="player-tag black" id="tag-black">⬛ <span id="chess-name-black">Hitam</span></div>
+  </div>
+  <div class="frozen-banner" id="frozen-banner">❄️ Terkena Kutukan Iblis!</div>
+  <div class="board-outer" id="board-outer">
+    <div class="chess-board" id="chess-board"></div>
+  </div>
+  <!-- Dual Iman Bars -->
+  <div id="chess-iman-bars" style="display:flex;gap:10px;width:100%;max-width:576px;padding:0 2px">
+    <div style="flex:1">
+      <div style="font-size:0.7em;font-weight:700;letter-spacing:1px;color:#5c3f1e;display:flex;justify-content:space-between;margin-bottom:3px">
+        <span>⚡ <span id="iman-w-name">Putih</span></span>
+        <span id="iman-w-val">100</span>
+      </div>
+      <div style="height:12px;background:rgba(0,0,0,0.15);border-radius:6px;overflow:hidden;border:1px solid rgba(0,0,0,0.1)">
+        <div id="iman-w-fill" class="bar-fill iman-bar" style="width:100%;transition:width 0.5s ease"></div>
+      </div>
+    </div>
+    <div style="flex:1">
+      <div style="font-size:0.7em;font-weight:700;letter-spacing:1px;color:#5c3f1e;display:flex;justify-content:space-between;margin-bottom:3px">
+        <span>⚡ <span id="iman-b-name">Hitam</span></span>
+        <span id="iman-b-val">100</span>
+      </div>
+      <div style="height:12px;background:rgba(0,0,0,0.15);border-radius:6px;overflow:hidden;border:1px solid rgba(0,0,0,0.1)">
+        <div id="iman-b-fill" class="bar-fill iman-bar" style="width:100%;transition:width 0.5s ease"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     DARE SCREEN
+============================= -->
+<div class="screen" id="dare-screen">
+  <div class="dare-card">
+    <div class="dare-icon">📿</div>
+    <div class="dare-title">✨ Amalan Challenge ✨</div>
+    <div style="font-size:0.75em;color:rgba(200,240,200,0.6);margin-bottom:8px;letter-spacing:1px">tantangan untuk: <strong id="dare-player-lbl" style="color:#2ecc71">—</strong></div>
+    <div class="dare-task" id="dare-task-txt">Loading...</div>
+    <div class="dare-sub">Tunaikan amalan ini untuk menambah iman!</div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="dare-btn" id="dare-ok-btn">✅ Siap! Bismillah (+12 Iman)</button>
+      <button class="dare-btn" id="dare-skip-btn" style="background:linear-gradient(135deg,#7b2d2d,#4a1a1a);box-shadow:0 4px 20px rgba(180,50,50,0.3)">❌ Tolak (−18 Iman)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     BATTLE SCREEN
+============================= -->
+<div class="screen" id="battle-screen">
+  <div class="battle-bg">
+    <div class="rune rune-1"></div>
+    <div class="rune rune-2"></div>
+    <div class="rune rune-3"></div>
+    <div class="battle-vignette"></div>
+  </div>
+  <div class="battle-content">
+    <!-- Bars -->
+    <div class="status-row">
+      <div class="bar-group">
+        <div class="bar-lbl">⚡ IMAN — <span id="iman-val">100</span>/100</div>
+        <div class="bar-track"><div class="bar-fill iman-bar" id="iman-fill" style="width:100%"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-lbl">💀 IBLIS HP — <span id="iblis-hp-val">100</span>/100</div>
+        <div class="bar-track"><div class="bar-fill iblis-hp-bar" id="iblis-hp-fill" style="width:100%"></div></div>
+      </div>
+    </div>
+    <div style="width:100%">
+      <div class="bar-lbl">🔥 ANGER — <span id="anger-val">0</span>/100</div>
+      <div class="bar-track" style="height:11px"><div class="bar-fill anger-bar" id="anger-fill" style="width:0%"></div></div>
+    </div>
+    <!-- Characters -->
+    <div class="char-row">
+      <div class="char-player">
+        <div class="player-sprite" id="player-sprite">🧕</div>
+        <div class="char-name" id="player-name-lbl">Pemain</div>
+      </div>
+      <div class="vs-badge">VS</div>
+      <div class="char-iblis">
+        <div class="iblis-sprite" id="iblis-sprite">😈</div>
+        <div class="iblis-badge" id="iblis-badge">Lemah: ???</div>
+        <div class="char-name" style="color:#bb44ee">Iblis</div>
+      </div>
+    </div>
+    <!-- Phase panel -->
+    <div class="battle-panel" id="battle-panel">
+      <!-- dynamically filled -->
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     RESULT SCREEN
+============================= -->
+<div class="screen" id="result-screen">
+  <div class="result-wrap">
+    <span class="result-emoji" id="res-emoji">⚔️</span>
+    <div class="result-title win" id="res-title">VICTORY!</div>
+    <div class="result-sub" id="res-sub">Iblis berhasil dikalahkan!</div>
+    <button class="result-btn" onclick="returnToChess()">⚔️ Lanjutkan Pertandingan</button>
+  </div>
+</div>
+
+<!-- ============================
+     CHECKMATE SCREEN
+============================= -->
+<div id="checkmate-screen">
+  <div class="cm-title" id="cm-title">CHECKMATE!</div>
+  <div class="cm-sub" id="cm-sub">Putih Menang! 🎉</div>
+  <button class="result-btn" onclick="resetGame()">🏠 Kembali ke Menu</button>
+</div>
+
+<script>
+/* ============================================================
+   IMAGE PLACEHOLDERS
+   Ganti null dengan path gambar untuk custom visual.
+   Kalau null, akan pakai emoji default.
+   Ukuran disarankan: 160x160px untuk portrait.
+============================================================ */
+const IMG = {
+  iblisPortrait:       null,  // Contoh: 'images/iblis.png' — gambar iblis (160×160px, dark/demonic)
+  playerWhitePortrait: null,  // Contoh: 'images/player-w.png' — gambar pemain putih (120×120px)
+  playerBlackPortrait: null,  // Contoh: 'images/player-b.png' — gambar pemain hitam (120×120px)
+};
+
+/* ============================================================
+   AUDIO PLACEHOLDER SYSTEM
+============================================================ */
+const SFX = {
+  chessMove:    null,  // Ekspektasi: suara kayu "tok" ringan saat bidak diletakkan
+  chessCapture: null,  // Ekspektasi: suara "crack" berat dramatis saat bidak dimakan
+  chessCheck:   null,  // Ekspektasi: ding tegang / alert sound
+  chessCheckmate: null,// Ekspektasi: fanfare kemenangan, drum roll orchestral
+  battleStart:  null,  // Ekspektasi: LoL-style battle horn + suara demons mengaum
+  dareAppear:   null,  // Ekspektasi: suara lembut islami: rebana + chime
+  attackHit:    null,  // Ekspektasi: golden impact, explosion cahaya
+  attackMiss:   null,  // Ekspektasi: whoosh + miss, angin berlalu
+  syariatAtk:   null,  // Ekspektasi: suara agung orchestral, masjid bell
+  tarekatAtk:   null,  // Ekspektasi: mystical spiritual chime + wind
+  hakikatAtk:   null,  // Ekspektasi: divine revelation, choir angelic
+  makrifatAtk:  null,  // Ekspektasi: heavenly resonance, cosmos vibration
+  defendOk:     null,  // Ekspektasi: shield block crisp, deflect metallic
+  defendFail:   null,  // Ekspektasi: dark bass thump, hit keras
+  imanDown:     null,  // Ekspektasi: heavy low-frequency impact + dark echo
+  imanUp:       null,  // Ekspektasi: chime lembut naik / divine ting
+  iblisRoar:    null,  // Ekspektasi: demonic growl + bass drop
+  iblisUlt:     null,  // Ekspektasi: chaos siren + hellfire crackle + roar
+  iblisHurt:    null,  // Ekspektasi: demon shriek kesakitan
+  iblisDefeat:  null,  // Ekspektasi: whoosh dark + eerie fade menghilang
+  coinFlip:     null,  // Ekspektasi: suara koin dilempar + mendarat
+  chessBgm:     null,  // Ekspektasi: musik akustik tenang, nuansa islami/oud
+  battleBgm:    null,  // Ekspektasi: LoL epic battle OST, intense orchestral+electronic
+  victoryBgm:   null,  // Ekspektasi: nasheed pendek / victory jingle triumphant
+  defeatBgm:    null,  // Ekspektasi: suara sedih melankolis, minor key orchestral
+};
+let activeBgm=null;
+function playSound(key){
+  if(!SFX[key])return;
+  try{const s=SFX[key].cloneNode?SFX[key].cloneNode():SFX[key];s.volume=0.65;s.play().catch(()=>{});}catch(e){}
+}
+function playBgm(key){
+  if(activeBgm){activeBgm.pause();activeBgm.currentTime=0;}
+  if(!SFX[key])return;
+  SFX[key].loop=true;SFX[key].volume=0.35;SFX[key].play().catch(()=>{});
+  activeBgm=SFX[key];
+}
+
+/* ============================================================
+   PLAYER STATE
+============================================================ */
+const PLAYERS={
+  white:{name:'Putih',iman:100},
+  black:{name:'Hitam',iman:100},
+};
+let skipNextTurn=null; // 'white' | 'black' — skip giliran setelah kalah iblis
+
+/* ============================================================
+   DATA
+============================================================ */
+const DARE_POOL=[
+  "Baca Al-Fatihah dengan tartil di depan teman-teman.",
+  "Sebutkan 5 nikmat Allah yang kamu rasakan hari ini.",
+  "Kirim pesan baik ke orang tua, misalnya 'Makasih ya, aku sayang Ayah/Ibu.'",
+  "Ucapkan istighfar 33 kali dengan pelan.",
+  "Baca satu surat pendek yang kamu hafal.",
+  "Doakan satu teman di ruangan ini dengan suara jelas.",
+  "Sebutkan 3 adab kepada orang tua.",
+  "Rapikan satu barang di sekitar kamu sebagai bentuk menjaga kebersihan.",
+  "Berikan pujian yang baik kepada satu teman tanpa berlebihan.",
+  "Sebutkan satu kisah Nabi secara singkat.",
+  "Baca shalawat 10 kali.",
+  "Minta maaf kepada satu orang di game ini, meskipun hanya untuk hal kecil.",
+  "Sebutkan 3 hal yang membatalkan wudhu.",
+  "Ambil sampah kecil di sekitar dan buang ke tempatnya.",
+  "Tunjukkan cara salam yang baik kepada teman.",
+  "Sebutkan 5 nama Nabi.",
+  "Baca doa sebelum makan.",
+  "Baca doa sesudah makan.",
+  "Sebutkan satu akhlak Rasulullah yang ingin kamu tiru.",
+  "Diam selama 30 detik sambil dzikir dalam hati.",
+  "Sebutkan 3 cara menjaga lisan.",
+  "Ucapkan 'jazakumullah khairan' kepada semua pemain.",
+  "Baca ayat kursi kalau hafal; kalau belum, baca surat pendek.",
+  "Sebutkan 3 contoh sedekah selain uang.",
+  "Beri motivasi Islami kepada teman di sebelahmu.",
+  "Praktikkan adab masuk rumah: salam dan masuk dengan sopan.",
+  "Sebutkan 3 rukun Islam.",
+  "Sebutkan 3 rukun iman.",
+  "Tahan diri dari bercanda selama satu putaran dan hanya bicara baik.",
+  "Ajak semua pemain membaca hamdalah bersama-sama.",
+];
+
+const SKILLS={
+  syariat:[
+    {name:"ULTIMATE SALAT",desc:"Salat lima waktu tepat waktu"},
+    {name:"RAMADAN SURGE",desc:"Kekuatan puasa Ramadan"},
+    {name:"THE ROYAL ZAKAT",desc:"Kedermawanan zakat"},
+    {name:"QURANIC BLAST",desc:"Power bacaan Al-Qur'an"},
+    {name:"SACRED VEIL SHIELD",desc:"Menutup aurat sesuai Islam"},
+    {name:"HALAL PURITY MODE",desc:"Menjauhi yang haram"},
+    {name:"TRUTH SWORD",desc:"Keteguhan tidak berbohong"},
+    {name:"AMANAH BLADE",desc:"Menjaga hak orang lain"},
+    {name:"FILIAL PIETY FORCE",desc:"Berbakti kepada orang tua"},
+    {name:"KNOWLEDGE SEEKER STRIKE",desc:"Menuntut ilmu agama"},
+  ],
+  tarekat:[
+    {name:"ZIKIR INFINITY LOOP",desc:"Membiasakan zikir tiap hari"},
+    {name:"SOUL MIRROR CLEANSE",desc:"Muhasabah jiwa"},
+    {name:"PATIENCE OVERLOAD",desc:"Melatih kesabaran"},
+    {name:"PURITY HEART GUARD",desc:"Jaga hati dari iri dengki"},
+    {name:"RIGHTEOUS PATH FOLLOW",desc:"Ikuti nasihat guru saleh"},
+    {name:"SUNNAH OVERFLOW",desc:"Membiasakan salat sunnah"},
+    {name:"EGO CRUSHER",desc:"Mengurangi sifat sombong"},
+    {name:"ISTIGFAR MAXING",desc:"Memperbanyak istigfar"},
+    {name:"ANGER NULLIFIER",desc:"Menahan amarah"},
+    {name:"PURE SINCERITY MODE",desc:"Melatih keikhlasan"},
+  ],
+  hakikat:[
+    {name:"DIVINE GIFT RECOGNITION",desc:"Sadar nikmat dari Allah"},
+    {name:"HUMBLE ANNIHILATOR",desc:"Tidak merasa paling hebat"},
+    {name:"TRIAL ABSORBER",desc:"Sabar menerima ujian"},
+    {name:"LOVE-DRIVEN WORSHIP",desc:"Ibadah karena cinta Allah"},
+    {name:"WORLD TRANSCENDENCE",desc:"Dunia hanya tempat beramal"},
+    {name:"TAWAKAL SHIELD",desc:"Tidak mudah kecewa"},
+    {name:"INVISIBLE BENEFACTOR",desc:"Bantu tanpa merasa berjasa"},
+    {name:"PURPOSE UNLOCK",desc:"Sadar hidup untuk kebaikan"},
+    {name:"GRATITUDE SURGE",desc:"Bersyukur di setiap keadaan"},
+    {name:"ANTI-RIYA DESTROYER",desc:"Menghindari riya"},
+  ],
+  makrifat:[
+    {name:"DIVINE SURVEILLANCE MODE",desc:"Merasa selalu diawasi Allah"},
+    {name:"PURE IKHLAS MAXING",desc:"Ikhlas tanpa mengharap pujian"},
+    {name:"INNER PEACE DZIKIR MAXING",desc:"Hati tenang karena Allah"},
+    {name:"HUMILITY ASCENSION",desc:"Semakin dekat Allah makin rendah hati"},
+    {name:"DIVINE LOVE OVERFLOW",desc:"Mencintai Allah dengan taat"},
+    {name:"UNSHAKEABLE FAITH",desc:"Tidak terpengaruh pujian/hinaan"},
+    {name:"GOD-MODE TARGET LOCK",desc:"Allah sebagai tujuan utama"},
+    {name:"CONSTANT REMEMBRANCE",desc:"Selalu ingat Allah kapan pun"},
+    {name:"QANAAH MAXING",desc:"Cukup dengan rezeki Allah"},
+    {name:"UNIVERSAL LOVE SPREAD",desc:"Menyayangi sesama makhluk"},
+  ],
+};
+
+const IBLIS_ATKS={
+  syariat:[
+    {name:"PRAYER ABANDONMENT STRIKE",desc:"Meninggalkan salat wajib"},
+    {name:"FAST-BREAK TEMPTATION",desc:"Tidak puasa tanpa alasan"},
+    {name:"ZAKAT DENIAL CURSE",desc:"Enggan membayar zakat"},
+    {name:"LYING CORRUPTION",desc:"Berbohong dalam perkataan"},
+    {name:"THEFT SEDUCTION",desc:"Mencuri hak orang lain"},
+    {name:"FITNAH STORM",desc:"Memfitnah dan menyebar keburukan"},
+    {name:"PARENTAL DEFIANCE",desc:"Durhaka kepada orang tua"},
+    {name:"HARAM CRAVING",desc:"Mengonsumsi yang haram"},
+    {name:"IGNORANCE VEIL",desc:"Enggan belajar hukum agama"},
+    {name:"DELIBERATE SIN SLASH",desc:"Melanggar aturan agama sengaja"},
+  ],
+  tarekat:[
+    {name:"ZIKIR DROUGHT",desc:"Malas berzikir"},
+    {name:"SELF-REFLECTION VOID",desc:"Tidak pernah muhasabah"},
+    {name:"RAGE UNLEASH",desc:"Mudah marah tak terkendali"},
+    {name:"ARROGANCE SPIKE",desc:"Sombong terhadap orang lain"},
+    {name:"ENVY VENOM",desc:"Iri melihat kebaikan orang"},
+    {name:"ADVICE REJECTION",desc:"Tidak mau menerima nasihat"},
+    {name:"NAFSU OVERFLOW",desc:"Mengikuti hawa nafsu"},
+    {name:"AKHLAK DECAY",desc:"Malas memperbaiki akhlak"},
+    {name:"RIYA POISON",desc:"Riya dalam ibadah"},
+    {name:"DISCIPLINE SHATTER",desc:"Tidak disiplin rohani"},
+  ],
+  hakikat:[
+    {name:"SELF-GLORY DELUSION",desc:"Merasa berhasil sendiri"},
+    {name:"GRATITUDE ERASURE",desc:"Lupa nikmat dari Allah"},
+    {name:"IMPATIENCE BLAZE",desc:"Tidak sabar saat ujian"},
+    {name:"FATE BLAME CURSE",desc:"Menyalahkan takdir"},
+    {name:"SHOW-OFF IBADAH",desc:"Beribadah untuk dilihat"},
+    {name:"DUNYA ADDICTION",desc:"Terlalu cinta dunia"},
+    {name:"FALSE BENEFACTOR TRAP",desc:"Merasa paling berjasa"},
+    {name:"INGRATITUDE SLASH",desc:"Tidak bersyukur"},
+    {name:"PLEASURE-SEEKER HEX",desc:"Hidup hanya bersenang-senang"},
+    {name:"LESSON-BLIND CURSE",desc:"Tidak ambil hikmah"},
+  ],
+  makrifat:[
+    {name:"UNMONITORED LIFE ILLUSION",desc:"Merasa bebas, tak diawasi Allah"},
+    {name:"PRAISE-SEEKER INFECTION",desc:"Beramal demi pujian"},
+    {name:"RESTLESS HEART CURSE",desc:"Hati gelisah, tak bertawakal"},
+    {name:"KNOWLEDGE ARROGANCE",desc:"Berilmu tapi makin sombong"},
+    {name:"HUMAN FEAR TOXIN",desc:"Lebih takut manusia dari Allah"},
+    {name:"PRIDE OVERDOSE",desc:"Bangga berlebihan karena pujian"},
+    {name:"DESPAIR INJECTION",desc:"Putus asa saat dihina"},
+    {name:"GOD-FORGETTING PLAGUE",desc:"Melupakan Allah sehari-hari"},
+    {name:"DIVINE DISCONTENT",desc:"Tidak ridha dengan ketentuan Allah"},
+    {name:"COMPASSION KILL",desc:"Tidak sayang sesama makhluk"},
+  ],
+};
+
+const DEFS=[
+  {key:'syariat',name:'SYARIAT FORTRESS',sub:'Benteng Syariat',cls:'syariat-d'},
+  {key:'tarekat',name:'TAREKAT MAXING',sub:'Shield Batin',cls:'tarekat-d'},
+  {key:'hakikat',name:'HAKIKAT BARRIER',sub:'Tembok Kebenaran',cls:'hakikat-d'},
+  {key:'makrifat',name:'MAKRIFAT DOME',sub:'Kubah Tertinggi',cls:'makrifat-d'},
+];
+
+const IBLIS_SPRITES={syariat:'👿',tarekat:'😈',hakikat:'🔱',makrifat:'💀'};
+const WEAKNESS_LBL={syariat:'Lemah: SYARIAT 🕌',tarekat:'Lemah: TAREKAT 🌊',hakikat:'Lemah: HAKIKAT ☀️',makrifat:'Lemah: MAKRIFAT ✨'};
+
+/* ============================================================
+   CHESS LOGIC
+============================================================ */
+let board=[],currentTurn='white',selectedCell=null,validMoves=[],pendingCapture=null,gameActive=true;
+let enPassantTarget=null;          // [row,col] kotak yang bisa ditangkap en passant
+let castlingRights={wK:true,wQ:true,bK:true,bQ:true}; // hak rokade
+
+const UNI={
+  K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',
+  k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟',
+};
+
+function initBoard(){
+  board=[
+    ['r','n','b','q','k','b','n','r'],
+    ['p','p','p','p','p','p','p','p'],
+    Array(8).fill(null),Array(8).fill(null),
+    Array(8).fill(null),Array(8).fill(null),
+    ['P','P','P','P','P','P','P','P'],
+    ['R','N','B','Q','K','B','N','R'],
+  ];
+  enPassantTarget=null;
+  castlingRights={wK:true,wQ:true,bK:true,bQ:true};
+}
+
+const isW=p=>p&&p===p.toUpperCase();
+const isB=p=>p&&p===p.toLowerCase()&&p!==p.toUpperCase();
+const isEnemy=(p,t)=>t==='white'?isB(p):isW(p);
+const isFriend=(p,t)=>t==='white'?isW(p):isB(p);
+
+function getCandidates(r,c,b,turn){
+  const p=b[r][c];if(!p)return[];
+  const moves=[];
+  const type=p.toLowerCase();
+  const dir=isW(p)?-1:1;
+  const pColor=isW(p)?'white':'black';
+  function add(nr,nc,captOnly=false,moveOnly=false){
+    if(nr<0||nr>7||nc<0||nc>7)return false;
+    const t=b[nr][nc];
+    if(t&&isFriend(t,pColor))return false;
+    if(captOnly&&!t)return false;
+    if(moveOnly&&t)return false;
+    moves.push([nr,nc]);return!t;
+  }
+  function slide(dr,dc){
+    let nr=r+dr,nc=c+dc;
+    while(nr>=0&&nr<=7&&nc>=0&&nc<=7){
+      const t=b[nr][nc];
+      if(t){if(isEnemy(t,pColor))moves.push([nr,nc]);break;}
+      moves.push([nr,nc]);nr+=dr;nc+=dc;
+    }
+  }
+  const R=[[-1,0],[1,0],[0,-1],[0,1]];
+  const Bi=[[-1,-1],[-1,1],[1,-1],[1,1]];
+  const K=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  const N=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+  switch(type){
+    case'p':
+      add(r+dir,c,false,true);
+      if((isW(p)&&r===6)||(!isW(p)&&r===1)){if(!b[r+dir][c])add(r+dir*2,c,false,true);}
+      add(r+dir,c-1,true);add(r+dir,c+1,true);
+      // En passant
+      if(enPassantTarget){
+        const[epr,epc]=enPassantTarget;
+        if(r+dir===epr&&Math.abs(c-epc)===1&&!b[epr][epc])moves.push([epr,epc]);
+      }
+      break;
+    case'r':R.forEach(([d1,d2])=>slide(d1,d2));break;
+    case'n':N.forEach(([d1,d2])=>add(r+d1,c+d2));break;
+    case'b':Bi.forEach(([d1,d2])=>slide(d1,d2));break;
+    case'q':R.forEach(([d1,d2])=>slide(d1,d2));Bi.forEach(([d1,d2])=>slide(d1,d2));break;
+    case'k':K.forEach(([d1,d2])=>add(r+d1,c+d2));break;
+  }
+  return moves;
+}
+
+function findKing(b,color){
+  const king=color==='white'?'K':'k';
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(b[r][c]===king)return[r,c];
+  return null;
+}
+
+function isInCheck(b,color){
+  const kp=findKing(b,color);if(!kp)return false;
+  const[kr,kc]=kp;
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const p=b[r][c];if(!p)continue;
+      if((color==='white'&&isB(p))||(color==='black'&&isW(p))){
+        const ms=getCandidates(r,c,b,color==='white'?'black':'white');
+        if(ms.some(([mr,mc])=>mr===kr&&mc===kc))return true;
+      }
+    }
+  }
+  return false;
+}
+
+function getLegalMoves(r,c,b,turn){
+  const piece=b[r][c];if(!piece)return[];
+  // Standard legal moves with en-passant simulation
+  let legal=getCandidates(r,c,b,turn).filter(([nr,nc])=>{
+    const nb=b.map(row=>[...row]);
+    // En passant: remove captured pawn from its actual square
+    if(enPassantTarget&&piece.toLowerCase()==='p'&&nr===enPassantTarget[0]&&nc===enPassantTarget[1]&&!b[nr][nc]){
+      nb[r][nc]=null; // captured pawn sits on same row as moving pawn
+    }
+    nb[nr][nc]=nb[r][c];nb[r][c]=null;
+    return!isInCheck(nb,turn);
+  });
+  // Castling (only for king on starting square, not in check)
+  if(piece.toLowerCase()==='k'&&!isInCheck(b,turn)){
+    const rank=turn==='white'?7:0;
+    const rook=turn==='white'?'R':'r';
+    if(r===rank&&c===4){
+      // Kingside: squares 5,6 empty, rook at 7, king doesn't cross check
+      if((turn==='white'?castlingRights.wK:castlingRights.bK)&&
+         b[rank][7]===rook&&!b[rank][5]&&!b[rank][6]){
+        const nb1=b.map(row=>[...row]);nb1[rank][5]=nb1[rank][4];nb1[rank][4]=null;
+        const nb2=b.map(row=>[...row]);nb2[rank][6]=nb2[rank][4];nb2[rank][4]=null;
+        if(!isInCheck(nb1,turn)&&!isInCheck(nb2,turn))legal.push([rank,6]);
+      }
+      // Queenside: squares 1,2,3 empty, rook at 0, king doesn't cross check
+      if((turn==='white'?castlingRights.wQ:castlingRights.bQ)&&
+         b[rank][0]===rook&&!b[rank][1]&&!b[rank][2]&&!b[rank][3]){
+        const nb1=b.map(row=>[...row]);nb1[rank][3]=nb1[rank][4];nb1[rank][4]=null;
+        const nb2=b.map(row=>[...row]);nb2[rank][2]=nb2[rank][4];nb2[rank][4]=null;
+        if(!isInCheck(nb1,turn)&&!isInCheck(nb2,turn))legal.push([rank,2]);
+      }
+    }
+  }
+  return legal;
+}
+
+function updateCastlingRights(piece,fromR,fromC,capturedPiece,toR,toC){
+  if(piece==='K'){castlingRights.wK=false;castlingRights.wQ=false;}
+  if(piece==='k'){castlingRights.bK=false;castlingRights.bQ=false;}
+  if(piece==='R'){if(fromR===7&&fromC===7)castlingRights.wK=false;if(fromR===7&&fromC===0)castlingRights.wQ=false;}
+  if(piece==='r'){if(fromR===0&&fromC===7)castlingRights.bK=false;if(fromR===0&&fromC===0)castlingRights.bQ=false;}
+  // If a rook is captured on its starting square
+  if(capturedPiece==='R'){if(toR===7&&toC===7)castlingRights.wK=false;if(toR===7&&toC===0)castlingRights.wQ=false;}
+  if(capturedPiece==='r'){if(toR===0&&toC===7)castlingRights.bK=false;if(toR===0&&toC===0)castlingRights.bQ=false;}
+}
+
+function isCheckmate(b,turn){
+  for(let r=0;r<8;r++)
+    for(let c=0;c<8;c++){
+      const p=b[r][c];if(!p)continue;
+      if((turn==='white'&&isW(p))||(turn==='black'&&isB(p)))
+        if(getLegalMoves(r,c,b,turn).length>0)return false;
+    }
+  return true;
+}
+
+function renderBoard(){
+  const el=document.getElementById('chess-board');
+  el.innerHTML='';
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const cell=document.createElement('div');
+      cell.className=`cell ${(r+c)%2===0?'light':'dark'}`;
+      cell.dataset.r=r;cell.dataset.c=c;
+      if(selectedCell&&selectedCell[0]===r&&selectedCell[1]===c)cell.classList.add('selected');
+      if(validMoves.some(([mr,mc])=>mr===r&&mc===c)){
+        board[r][c]?cell.classList.add('valid-capture'):cell.classList.add('valid-move');
+      }
+      const kp=findKing(board,currentTurn);
+      if(isInCheck(board,currentTurn)&&kp&&kp[0]===r&&kp[1]===c)cell.classList.add('in-check');
+      const p=board[r][c];
+      if(p){
+        const sp=document.createElement('span');
+        sp.className='piece';sp.textContent=UNI[p]||p;
+        cell.appendChild(sp);
+      }
+      if(c===0){const l=document.createElement('span');l.className='cell-lbl rank';l.textContent=8-r;cell.appendChild(l);}
+      if(r===7){const l=document.createElement('span');l.className='cell-lbl file';l.textContent='abcdefgh'[c];cell.appendChild(l);}
+      cell.addEventListener('click',()=>handleCell(r,c));
+      el.appendChild(cell);
+    }
+  }
+  if(boardRotationEnabled){
+    document.getElementById('board-outer').classList.toggle('flipped',currentTurn==='black');
+  }
+  document.getElementById('tag-white').classList.toggle('active',currentTurn==='white');
+  document.getElementById('tag-black').classList.toggle('active',currentTurn==='black');
+  document.getElementById('turn-label').textContent=
+    currentTurn==='white'?`Giliran ${PLAYERS.white.name} ♙`:`Giliran ${PLAYERS.black.name} ♟`;
+  // Frozen banner
+  const banner=document.getElementById('frozen-banner');
+  if(skipNextTurn===currentTurn){
+    banner.textContent=`❄️ ${PLAYERS[currentTurn].name} terkena Kutukan Iblis — giliran dilewati!`;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+  renderImanBars();
+}
+
+function handleCell(r,c){
+  if(!gameActive)return;
+  // Check skip turn
+  if(skipNextTurn===currentTurn){
+    skipNextTurn=null;
+    showNotif(`❄️ ${PLAYERS[currentTurn].name} melewatkan giliran!`,'red');
+    currentTurn=currentTurn==='white'?'black':'white';
+    renderBoard();
+    return;
+  }
+  const p=board[r][c];
+  if(selectedCell){
+    const[sr,sc]=selectedCell;
+    if(validMoves.some(([mr,mc])=>mr===r&&mc===c)){
+      const moving=board[sr][sc];
+      const target=board[r][c];
+      // En passant detection: pawn moves diagonally to empty ep square
+      const isEP=moving.toLowerCase()==='p'&&!target&&sc!==c&&
+                 enPassantTarget&&r===enPassantTarget[0]&&c===enPassantTarget[1];
+      // Castling detection: king moves 2 squares
+      const isCastle=moving.toLowerCase()==='k'&&Math.abs(c-sc)===2;
+
+      if(target||isEP){
+        // Capture or en passant → trigger dare/battle
+        const capturedPiece=isEP?board[sr][c]:target;
+        pendingCapture={from:[sr,sc],to:[r,c],piece:moving,captured:capturedPiece,isEP};
+        selectedCell=null;validMoves=[];
+        playSound('chessCapture');
+        setTimeout(()=>triggerCapture(),200);
+        return;
+      }
+      // Normal move or castling
+      board[r][c]=moving;board[sr][sc]=null;
+      if(isCastle){
+        const rank=currentTurn==='white'?7:0;
+        if(c===6){board[rank][5]=board[rank][7];board[rank][7]=null;}  // kingside
+        else{board[rank][3]=board[rank][0];board[rank][0]=null;}        // queenside
+      }
+      updateCastlingRights(moving,sr,sc,null,r,c);
+      // Update en passant target
+      enPassantTarget=null;
+      if(moving.toLowerCase()==='p'&&Math.abs(r-sr)===2)enPassantTarget=[(sr+r)/2,c];
+      if(moving==='P'&&r===0)board[r][c]='Q';
+      if(moving==='p'&&r===7)board[r][c]='q';
+      playSound(isCastle?'chessCapture':'chessMove');
+      currentTurn=currentTurn==='white'?'black':'white';
+      selectedCell=null;validMoves=[];
+      checkState();renderBoard();
+      return;
+    }
+    selectedCell=null;validMoves=[];
+  }
+  if(p&&((currentTurn==='white'&&isW(p))||(currentTurn==='black'&&isB(p)))){
+    selectedCell=[r,c];
+    validMoves=getLegalMoves(r,c,board,currentTurn);
+  }
+  renderBoard();
+}
+
+function checkState(){
+  if(isInCheck(board,currentTurn)){
+    if(isCheckmate(board,currentTurn)){
+      setTimeout(()=>{
+        playSound('chessCheckmate');
+        const winner=currentTurn==='white'?PLAYERS.black.name:PLAYERS.white.name;
+        document.getElementById('cm-title').textContent='♛ CHECKMATE! ♛';
+        document.getElementById('cm-sub').textContent=`${winner} Menang! 🏆`;
+        document.getElementById('checkmate-screen').classList.add('active');
+        gameActive=false;
+      },300);
+    }else{playSound('chessCheck');}
+  }
+}
+
+function resetGame(){
+  initBoard();currentTurn='white';selectedCell=null;validMoves=[];
+  gameActive=true;skipNextTurn=null;boardRotationEnabled=true;
+  PLAYERS.white.iman=100;PLAYERS.black.iman=100;
+  PLAYERS.white.name='Putih';PLAYERS.black.name='Hitam';
+  document.getElementById('checkmate-screen').classList.remove('active');
+  document.getElementById('fire-overlay').style.opacity=0;
+  document.getElementById('fire-overlay').classList.remove('ember');
+  // Reset coin toss screen state
+  document.getElementById('toss-result').textContent='Siap dikocok!';
+  document.getElementById('toss-flip-btn').style.display='inline-block';
+  document.getElementById('toss-start-btn').style.display='none';
+  document.getElementById('toss-coin').textContent='🪙';
+  document.getElementById('toss-coin').classList.remove('flipping');
+  document.getElementById('name-p1').value='';
+  document.getElementById('name-p2').value='';
+  showScreen('name-screen');
+  if(activeBgm){activeBgm.pause();activeBgm.currentTime=0;activeBgm=null;}
+}
+
+/* ============================================================
+   SCREEN MANAGEMENT
+============================================================ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ============================================================
+   IMAN BARS (chess screen)
+============================================================ */
+function getImanClass(v){
+  return v<=30?'bar-fill iman-bar low':v<=60?'bar-fill iman-bar mid':'bar-fill iman-bar';
+}
+
+function renderImanBars(){
+  const wf=document.getElementById('iman-w-fill');
+  const bf=document.getElementById('iman-b-fill');
+  if(!wf)return;
+  wf.style.width=PLAYERS.white.iman+'%';
+  wf.className=getImanClass(PLAYERS.white.iman);
+  document.getElementById('iman-w-val').textContent=Math.round(PLAYERS.white.iman);
+  bf.style.width=PLAYERS.black.iman+'%';
+  bf.className=getImanClass(PLAYERS.black.iman);
+  document.getElementById('iman-b-val').textContent=Math.round(PLAYERS.black.iman);
+  document.getElementById('iman-w-name').textContent=PLAYERS.white.name;
+  document.getElementById('iman-b-name').textContent=PLAYERS.black.name;
+  // Active player highlight
+  wf.parentElement.style.boxShadow=currentTurn==='white'?'0 0 8px rgba(46,204,113,0.5)':'none';
+  bf.parentElement.style.boxShadow=currentTurn==='black'?'0 0 8px rgba(46,204,113,0.5)':'none';
+}
+
+function changeIman(color,delta){
+  PLAYERS[color].iman=Math.max(0,Math.min(100,PLAYERS[color].iman+delta));
+  renderImanBars();
+  updateFire(Math.min(PLAYERS.white.iman,PLAYERS.black.iman));
+  // Check game over by iman
+  if(PLAYERS[color].iman<=0){
+    setTimeout(()=>triggerImanGameOver(color),600);
+  }
+}
+
+function triggerImanGameOver(color){
+  playBgm('defeatBgm');
+  const loser=PLAYERS[color].name;
+  const winner=PLAYERS[color==='white'?'black':'white'].name;
+  document.getElementById('cm-title').textContent='💀 IMAN HABIS!';
+  document.getElementById('cm-sub').textContent=`Iman ${loser} hancur! ${winner} Menang! 🏆`;
+  document.getElementById('checkmate-screen').classList.add('active');
+  gameActive=false;
+}
+
+/* ============================================================
+   CAPTURE PROBABILITY
+   Iman tinggi → lebih banyak dare, kurang battle
+   Iman rendah → lebih banyak battle
+============================================================ */
+function getDareProb(iman){
+  if(iman>=80)return 0.80;
+  if(iman>=60)return 0.65;
+  if(iman>=40)return 0.50;
+  if(iman>=20)return 0.30;
+  return 0.10;
+}
+
+function triggerCapture(){
+  const iman=PLAYERS[currentTurn].iman;
+  const dareProb=getDareProb(iman);
+  if(Math.random()<dareProb){triggerDare();}
+  else{triggerBattle();}
+}
+
+/* ============================================================
+   DARE SYSTEM
+============================================================ */
+function triggerDare(){
+  const captureColor=currentTurn; // save before executeCapture changes it
+  const task=DARE_POOL[Math.floor(Math.random()*DARE_POOL.length)];
+  document.getElementById('dare-task-txt').textContent=task;
+  document.getElementById('dare-player-lbl').textContent=PLAYERS[captureColor].name;
+  playSound('dareAppear');
+  showScreen('dare-screen');
+
+  document.getElementById('dare-ok-btn').onclick=()=>{
+    changeIman(captureColor,+12);
+    playSound('imanUp');spawnFX('block',20);
+    boardRotationEnabled=false;
+    executeCapture();
+    showScreen('chess-screen');
+    showNotif(`✨ ${PLAYERS[captureColor].name} terima amalan! +12 Iman!`,'gold');
+    playBgm('chessBgm');
+    setTimeout(()=>{boardRotationEnabled=true;renderBoard();},180);
+  };
+  document.getElementById('dare-skip-btn').onclick=()=>{
+    changeIman(captureColor,-18);
+    playSound('imanDown');spawnFX('damage',15);flash('red',0.4);
+    boardRotationEnabled=false;
+    executeCapture();
+    showScreen('chess-screen');
+    showNotif(`😤 ${PLAYERS[captureColor].name} menolak amalan... −18 Iman!`,'red');
+    playBgm('chessBgm');
+    setTimeout(()=>{boardRotationEnabled=true;renderBoard();},180);
+  };
+}
+
+/* ============================================================
+   BATTLE SYSTEM
+============================================================ */
+let boardRotationEnabled=true; // delay rotation until back on chess screen
+
+const BS={
+  imanBar:100,iblisHp:100,anger:0,weakness:'syariat',
+  timer:null,phase:'idle',
+  captureColor:'white',  // siapa yang memicu capture
+  phase2:false,          // apakah ini giliran ke-2 (lawan bertarung)
+  locked:false,          // anti-spam: mencegah double-click
+};
+
+function triggerBattle(){
+  BS.captureColor=currentTurn;
+  BS.phase2=false;
+  startBattleFor(currentTurn);
+}
+
+function startBattleFor(color){
+  BS.imanBar=PLAYERS[color].iman;
+  BS.iblisHp=100;BS.anger=0;
+  BS.weakness=rndWeak();
+  updateBattleUI(color);
+  showScreen('battle-screen');
+  playBgm('battleBgm');
+  playSound('battleStart');
+  // Player sprite
+  setPlayerSprite(color);
+  setIblisSprite();
+  document.getElementById('player-name-lbl').textContent=PLAYERS[color].name;
+  setTimeout(()=>startAttack(color),900);
+}
+
+function setPlayerSprite(color){
+  const el=document.getElementById('player-sprite');
+  const imgKey=color==='white'?'playerWhitePortrait':'playerBlackPortrait';
+  if(IMG[imgKey]){
+    el.innerHTML='';
+    const img=document.createElement('img');
+    img.src=IMG[imgKey];img.style.cssText='width:80px;height:80px;object-fit:contain;border-radius:10px;';
+    el.appendChild(img);
+  }else{
+    el.innerHTML='';el.textContent=color==='white'?'🧕':'🧔';
+  }
+}
+
+function setIblisSprite(){
+  const el=document.getElementById('iblis-sprite');
+  if(IMG.iblisPortrait){
+    el.innerHTML='';
+    const img=document.createElement('img');
+    img.src=IMG.iblisPortrait;img.style.cssText='width:100px;height:100px;object-fit:contain;border-radius:10px;';
+    el.appendChild(img);
+  }else{
+    el.innerHTML='';el.textContent=IBLIS_SPRITES[BS.weakness];
+  }
+}
+
+function rndWeak(){return['syariat','tarekat','hakikat','makrifat'][Math.floor(Math.random()*4)];}
+function rndFrom(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+function updateBattleUI(color){
+  const ip=BS.imanBar;
+  const fill=document.getElementById('iman-fill');
+  fill.style.width=ip+'%';
+  fill.className='bar-fill iman-bar';
+  if(ip<=30){fill.classList.add('low');updateFire(ip);}
+  else if(ip<=60){fill.classList.add('mid');updateFire(ip);}
+  else updateFire(ip);
+  document.getElementById('iman-val').textContent=Math.round(ip);
+  document.getElementById('iblis-hp-fill').style.width=BS.iblisHp+'%';
+  document.getElementById('iblis-hp-val').textContent=Math.round(BS.iblisHp);
+  document.getElementById('anger-fill').style.width=BS.anger+'%';
+  document.getElementById('anger-val').textContent=Math.round(BS.anger);
+  document.getElementById('iblis-badge').textContent=WEAKNESS_LBL[BS.weakness];
+  if(!IMG.iblisPortrait)document.getElementById('iblis-sprite').textContent=IBLIS_SPRITES[BS.weakness];
+}
+
+function updateFire(ip){
+  const ov=document.getElementById('fire-overlay');
+  if(ip>60){ov.style.opacity=0;ov.classList.remove('ember');}
+  else if(ip>30){ov.style.opacity=0.25+(60-ip)/150;ov.classList.remove('ember');}
+  else{ov.style.opacity=0.55+(30-ip)/80;ov.classList.add('ember');}
+}
+
+/* -- ATTACK PHASE -- */
+function startAttack(color){
+  BS.locked=false;
+  BS.phase='attack';
+  BS.weakness=rndWeak();
+  updateBattleUI(color);
+
+  const cats=['syariat','tarekat','hakikat','makrifat'];
+  let skills=cats.map(cat=>{const s=rndFrom(SKILLS[cat]);return{...s,cat};});
+  for(let i=skills.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[skills[i],skills[j]]=[skills[j],skills[i]];}
+
+  let t=15;
+  const panel=document.getElementById('battle-panel');
+  panel.innerHTML=`
+    <div class="phase-title">⚔️ SERANGAN — PILIH JURUSMU!</div>
+    <div class="battle-msg" id="bmsg">Perhatikan kelemahan Iblis, serang dengan tepat!</div>
+    <div class="timer-track"><div class="timer-fill" id="tfill" style="width:100%"></div></div>
+    <div class="timer-txt" id="ttxt">⏱ ${t}s</div>
+    <div class="skill-grid" id="sgrid"></div>
+  `;
+  const grid=panel.querySelector('#sgrid');
+  skills.forEach(sk=>{
+    const btn=document.createElement('button');
+    btn.className='skill-btn';
+    btn.innerHTML=`<div class="sk-name">${sk.name}</div><div class="sk-desc">${sk.desc}</div>`;
+    btn.addEventListener('click',()=>{clearBT();resolveAttack(sk,color);});
+    grid.appendChild(btn);
+  });
+  startBTimer(t,15,()=>resolveAttack(null,color));
+}
+
+function resolveAttack(sk,color){
+  if(BS.locked)return;BS.locked=true;
+  clearBT();
+  if(!sk){
+    setBMsg('⏰ Waktu habis! Iblis tertawa! Anger Iblis meningkat drastis!','fail');
+    playSound('attackMiss');spawnFX('miss',30);flash('red',0.3);
+    BS.anger=Math.min(100,BS.anger+28);updateBattleUI(color);
+    setTimeout(()=>startDefend(color),1300);return;
+  }
+  const hit=sk.cat===BS.weakness;
+  if(hit){
+    const dmg=22+Math.floor(Math.random()*18);
+    BS.iblisHp=Math.max(0,BS.iblisHp-dmg);
+    setBMsg(`💫 CRITICAL HIT! ${sk.name}! -${dmg} pada Iblis!`,'success');
+    playSound('attackHit');playSound(sk.cat+'Atk');
+    spawnFX('hit',50);flash('gold',0.6);
+    BS.anger=Math.max(0,BS.anger-8);
+  }else{
+    const dmg=2+Math.floor(Math.random()*4);
+    BS.iblisHp=Math.max(0,BS.iblisHp-dmg);
+    const imanPenalty=8+Math.floor(Math.random()*8);
+    BS.imanBar=Math.max(0,BS.imanBar-imanPenalty);
+    BS.anger=Math.min(100,BS.anger+10);
+    setBMsg(`💢 Serangan balik! ${sk.name} hanya -${dmg}hp Iblis. Kamu kehilangan -${imanPenalty} IMAN!`,'fail');
+    playSound('attackMiss');playSound('imanDown');spawnFX('weak',20);spawnFX('damage',15);flash('red',0.25);
+  }
+  updateBattleUI(color);
+  if(BS.iblisHp<=0){setTimeout(()=>endBattle('win',color),900);return;}
+  if(BS.imanBar<=0){setTimeout(()=>endBattle('lose',color),900);return;}
+  setTimeout(()=>startDefend(color),1300);
+}
+
+/* -- DEFEND PHASE -- */
+function startDefend(color){
+  BS.locked=false;
+  BS.phase='defend';
+  const cat=rndWeak();
+  const atk=rndFrom(IBLIS_ATKS[cat]);
+  let t=10;
+  const panel=document.getElementById('battle-panel');
+  panel.innerHTML=`
+    <div class="phase-title">🛡 BERTAHAN — BLOKIR GODAAN IBLIS!</div>
+    <div class="battle-msg" id="bmsg">
+      Iblis menyerang dengan:<br>
+      <strong style="color:#e8c070">"${atk.name}"</strong><br>
+      <span style="font-size:0.8em;opacity:0.6">${atk.desc}</span>
+    </div>
+    <div class="timer-track"><div class="timer-fill" id="tfill" style="width:100%"></div></div>
+    <div class="timer-txt" id="ttxt">⏱ ${t}s</div>
+    <div class="def-grid" id="dgrid"></div>
+  `;
+  playSound('iblisRoar');
+  const grid=panel.querySelector('#dgrid');
+  DEFS.forEach(d=>{
+    const btn=document.createElement('button');
+    btn.className=`def-btn ${d.cls}`;
+    btn.innerHTML=`<div>${d.name}</div><div class="def-sub">${d.sub}</div>`;
+    btn.addEventListener('click',()=>{clearBT();resolveDefend(d.key,cat,color);});
+    grid.appendChild(btn);
+  });
+  startBTimer(t,10,()=>resolveDefend(null,cat,color));
+}
+
+function resolveDefend(chosen,atkCat,color){
+  if(BS.locked)return;BS.locked=true;
+  clearBT();
+  const ok=chosen===atkCat;
+  if(!chosen){
+    const dmg=28+Math.floor(Math.random()*15);
+    BS.imanBar=Math.max(0,BS.imanBar-dmg);
+    BS.anger=Math.min(100,BS.anger+30);
+    setBMsg(`⏰ TERLAMBAT! Godaan menghantam telak! -${dmg} IMAN!`,'fail');
+    playSound('imanDown');playSound('defendFail');flash('red',0.8);shake();spawnFX('damage',50);spawnFX('heavydmg',20);
+  }else if(ok){
+    setBMsg(`🛡 DEFLECT! ${DEFS.find(d=>d.key===chosen).name} berhasil!`,'success');
+    playSound('defendOk');spawnFX('block',25);flash('gold',0.3);
+    BS.anger=Math.max(0,BS.anger-6);
+  }else{
+    const dmg=20+Math.floor(Math.random()*12);
+    BS.imanBar=Math.max(0,BS.imanBar-dmg);
+    BS.anger=Math.min(100,BS.anger+18);
+    setBMsg(`💥 PERTAHANAN SALAH! Godaan tembus! -${dmg} IMAN!`,'fail');
+    playSound('defendFail');playSound('imanDown');flash('red',0.6);shake();spawnFX('damage',40);
+  }
+  updateBattleUI(color);
+  if(BS.imanBar<=0){setTimeout(()=>endBattle('lose',color),900);return;}
+  if(BS.anger>=100){setTimeout(()=>triggerUlt(color),900);return;}
+  setTimeout(()=>startAttack(color),1300);
+}
+
+/* -- IBLIS ULTIMATE -- */
+function triggerUlt(color){
+  clearBT();BS.anger=0;updateBattleUI(color);
+  playSound('iblisUlt');flash('purple',1.0);
+  const ov=document.getElementById('ult-overlay');
+  ov.classList.add('active');
+  setTimeout(()=>{ov.classList.remove('active');runUltSeq(3,color);},1600);
+}
+
+function runUltSeq(n,color){
+  BS.locked=false;
+  if(n<=0||BS.imanBar<=0){
+    if(BS.imanBar<=0)endBattle('lose',color);
+    else setTimeout(()=>startAttack(color),600);
+    return;
+  }
+  const cat=rndWeak();
+  const atk=rndFrom(IBLIS_ATKS[cat]);
+  let t=8;
+  const panel=document.getElementById('battle-panel');
+  panel.innerHTML=`
+    <div class="phase-title" style="color:#ff4444;animation:ultPulse 0.25s infinite">
+      💀 ULTIMATE SERIES ${4-n}/3 💀
+    </div>
+    <div class="battle-msg" id="bmsg" style="color:#ff8888">
+      ⚡ <strong>"${atk.name}"</strong> ⚡<br>
+      <span style="font-size:0.8em;opacity:0.7">${atk.desc}</span>
+    </div>
+    <div class="timer-track"><div class="timer-fill" id="tfill" style="width:100%;background:#ff4444"></div></div>
+    <div class="timer-txt" id="ttxt" style="color:#ff4444">⏱ ${t}s</div>
+    <div class="def-grid" id="dgrid"></div>
+  `;
+  const grid=panel.querySelector('#dgrid');
+  DEFS.forEach(d=>{
+    const btn=document.createElement('button');
+    btn.className=`def-btn ${d.cls}`;btn.style.borderColor='rgba(255,68,68,0.6)';
+    btn.innerHTML=`<div>${d.name}</div><div class="def-sub">${d.sub}</div>`;
+    btn.addEventListener('click',()=>{clearBT();resolveUltDef(d.key,cat,n,color);});
+    grid.appendChild(btn);
+  });
+  startBTimer(t,8,()=>resolveUltDef(null,cat,n,color));
+}
+
+function resolveUltDef(chosen,cat,n,color){
+  if(BS.locked)return;BS.locked=true;
+  clearBT();
+  if(!chosen||chosen!==cat){
+    const dmg=35+Math.floor(Math.random()*15);
+    BS.imanBar=Math.max(0,BS.imanBar-dmg);
+    playSound('imanDown');flash('red',0.95);shake();spawnFX('heavydmg',60);updateBattleUI(color);
+  }else{
+    playSound('defendOk');flash('gold',0.3);spawnFX('block',20);updateBattleUI(color);
+  }
+  if(BS.imanBar<=0){endBattle('lose',color);return;}
+  setTimeout(()=>runUltSeq(n-1,color),600);
+}
+
+/* -- BATTLE END (two-phase logic) -- */
+function endBattle(outcome,color){
+  clearBT();
+  const imanDelta=outcome==='win'?20:-25;
+  PLAYERS[color].iman=Math.max(0,Math.min(100,PLAYERS[color].iman+imanDelta));
+
+  if(outcome==='win'){
+    playBgm('victoryBgm');
+    playSound('iblisDefeat');spawnFX('victory',80);
+    document.getElementById('res-emoji').textContent='🌟';
+    document.getElementById('res-title').textContent=`${PLAYERS[color].name} MENANG!`;
+    document.getElementById('res-title').className='result-title win';
+
+    if(BS.phase2){
+      // Phase-2 winner: the ORIGINAL loser (captureColor) skips their next turn
+      skipNextTurn=BS.captureColor;
+      document.getElementById('res-sub').innerHTML=
+        `Iblis dikalahkan! +20 Iman untuk ${PLAYERS[color].name}.<br>
+         ❄️ <strong>${PLAYERS[BS.captureColor].name}</strong> harus melewatkan 1 giliran catur!`;
+    }else{
+      document.getElementById('res-sub').textContent=
+        `Iblis dikalahkan! +20 Iman untuk ${PLAYERS[color].name}!`;
+    }
+    showScreen('result-screen');
+
+  }else{
+    // Lost
+    if(!BS.phase2){
+      // First fighter lost → opponent gets to fight
+      const opponent=color==='white'?'black':'white';
+      playBgm('defeatBgm');
+      playSound('iblisRoar');
+      document.getElementById('res-emoji').textContent='💔';
+      document.getElementById('res-title').textContent=`${PLAYERS[color].name} KALAH!`;
+      document.getElementById('res-title').className='result-title lose';
+      document.getElementById('res-sub').innerHTML=
+        `Iblis tidak terkalahkan! −25 Iman untuk ${PLAYERS[color].name}.<br>
+         ⚡ <strong>${PLAYERS[opponent].name}</strong> harus menghadapi Iblis sekarang!`;
+
+      // Override result button to trigger phase-2
+      const btn=document.querySelector('#result-screen .result-btn');
+      btn.textContent=`⚔️ ${PLAYERS[opponent].name} — Hadapi Iblis!`;
+      btn.onclick=()=>{
+        btn.textContent='⚔️ Lanjutkan Pertandingan';
+        btn.onclick=()=>returnToChess();
+        BS.phase2=true;
+        startBattleFor(opponent);
+      };
+      showScreen('result-screen');
+      // Check iman game over
+      if(PLAYERS[color].iman<=0)setTimeout(()=>triggerImanGameOver(color),2000);
+
+    }else{
+      // Both lost
+      playBgm('defeatBgm');
+      playSound('iblisRoar');
+      const oppColor=color==='white'?'black':'white';
+      document.getElementById('bothfail-msg').innerHTML=
+        `<strong>${PLAYERS[BS.captureColor].name}</strong> dan <strong>${PLAYERS[oppColor].name}</strong> keduanya kalah melawan Iblis...<br><br>
+         Tingkatkan iman kalian! Jangan mudah tergoda godaan syaitan!<br>
+         <span style="color:#f39c12;font-size:0.9em">Pertandingan catur dilanjutkan.</span>`;
+      document.getElementById('both-fail-popup').classList.add('active');
+      // Check iman game over
+      if(PLAYERS[color].iman<=0)setTimeout(()=>triggerImanGameOver(color),2000);
+    }
+  }
+  document.getElementById('fire-overlay').style.opacity=0;
+  document.getElementById('fire-overlay').classList.remove('ember');
+}
+
+function returnToChess(){
+  // Disable rotation so board stays in current POV while we switch screens
+  boardRotationEnabled=false;
+  executeCapture(); // changes currentTurn, renders board — no rotation yet
+  showScreen('chess-screen'); // chess screen appears with SAME board orientation
+  playBgm('chessBgm');
+  document.getElementById('fire-overlay').style.opacity=0;
+  document.getElementById('fire-overlay').classList.remove('ember');
+  renderImanBars();
+  // Reset result button
+  const btn=document.querySelector('#result-screen .result-btn');
+  btn.textContent='⚔️ Lanjutkan Pertandingan';
+  btn.onclick=()=>returnToChess();
+  // NOW rotate to new player's POV — animation plays visibly
+  setTimeout(()=>{
+    boardRotationEnabled=true;
+    renderBoard(); // smooth 0.7s rotation animation
+  },180);
+}
+
+function executeCapture(){
+  if(!pendingCapture)return;
+  const{from,to,piece,captured,isEP}=pendingCapture;
+  board[to[0]][to[1]]=piece;board[from[0]][from[1]]=null;
+  // En passant: captured pawn is on same row as the moving pawn, same col as destination
+  if(isEP)board[from[0]][to[1]]=null;
+  updateCastlingRights(piece,from[0],from[1],captured,to[0],to[1]);
+  // Update en passant target (capture never triggers ep)
+  enPassantTarget=null;
+  if(piece==='P'&&to[0]===0)board[to[0]][to[1]]='Q';
+  if(piece==='p'&&to[0]===7)board[to[0]][to[1]]='q';
+  currentTurn=currentTurn==='white'?'black':'white';
+  pendingCapture=null;checkState();renderBoard();
+}
+
+function dismissFrozen(){document.getElementById('frozen-popup').classList.remove('active');}
+function dismissBothFail(){
+  document.getElementById('both-fail-popup').classList.remove('active');
+  returnToChess();
+}
+
+/* ============================================================
+   TIMER HELPER
+============================================================ */
+function startBTimer(t,max,onEnd){
+  clearBT();
+  BS.timer=setInterval(()=>{
+    t--;
+    const fill=document.getElementById('tfill');
+    const txt=document.getElementById('ttxt');
+    if(fill)fill.style.width=(t/max*100)+'%';
+    if(txt)txt.textContent=`⏱ ${t}s`;
+    if(t<=0){clearBT();onEnd();}
+  },1000);
+}
+function clearBT(){if(BS.timer){clearInterval(BS.timer);BS.timer=null;}}
+function setBMsg(msg,type){
+  const el=document.getElementById('bmsg');if(!el)return;
+  el.innerHTML=msg;
+  el.style.color=type==='success'?'#2ecc71':type==='fail'?'#e74c3c':'#ccc';
+}
+
+/* ============================================================
+   VISUAL HELPERS
+============================================================ */
+function showNotif(msg,type){
+  const n=document.getElementById('notif');
+  n.textContent=msg;n.style.display='block';
+  n.style.borderColor=type==='gold'?'var(--lgold)':'#e74c3c';
+  n.style.color=type==='gold'?'var(--lgold)':'#ff6b6b';
+  setTimeout(()=>{n.style.display='none';},3000);
+}
+function flash(col,amt){
+  const el=document.getElementById('flash-'+col);if(!el)return;
+  el.style.opacity=amt;setTimeout(()=>{el.style.opacity=0;},280);
+}
+function shake(){
+  document.body.classList.remove('shaking');
+  void document.body.offsetWidth;
+  document.body.classList.add('shaking');
+  setTimeout(()=>document.body.classList.remove('shaking'),500);
+}
+
+/* ============================================================
+   PARTICLE SYSTEM
+============================================================ */
+const canvas=document.getElementById('fx-canvas');
+const ctx2=canvas.getContext('2d');
+let particles=[];
+function resizeC(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+window.addEventListener('resize',resizeC);resizeC();
+
+class Particle{
+  constructor(x,y,type){
+    this.x=x;this.y=y;this.type=type;this.life=1;
+    const ang=Math.random()*Math.PI*2;
+    const spd=type==='heavydmg'?4+Math.random()*8:2+Math.random()*6;
+    this.vx=Math.cos(ang)*spd;
+    this.vy=Math.sin(ang)*spd-(type==='victory'?4:0);
+    this.size=type==='heavydmg'?5+Math.random()*14:3+Math.random()*8;
+    switch(type){
+      case'hit':this.color=`hsl(${45+Math.random()*25},100%,${55+Math.random()*30}%)`;this.decay=0.025;break;
+      case'weak':this.color=`hsl(${200+Math.random()*40},80%,60%)`;this.decay=0.04;break;
+      case'miss':this.color=`rgba(160,160,160,${0.5+Math.random()*0.5})`;this.decay=0.05;break;
+      case'block':this.color=`hsl(${120+Math.random()*40},85%,55%)`;this.decay=0.03;break;
+      case'damage':this.color=`hsl(${Math.random()*20},100%,${40+Math.random()*30}%)`;this.decay=0.035;break;
+      case'heavydmg':this.color=`hsl(${Math.random()*15},100%,${30+Math.random()*40}%)`;this.decay=0.02;break;
+      case'victory':this.color=`hsl(${Math.random()*360},90%,60%)`;this.size=4+Math.random()*10;this.decay=0.012;break;
+      default:this.color='white';this.decay=0.04;
+    }
+  }
+  update(){this.x+=this.vx;this.y+=this.vy;this.vy+=0.14;this.vx*=0.97;this.life-=this.decay;this.size*=0.98;}
+  draw(){
+    ctx2.save();ctx2.globalAlpha=Math.max(0,this.life);
+    ctx2.fillStyle=this.color;ctx2.shadowBlur=6;ctx2.shadowColor=this.color;
+    ctx2.beginPath();ctx2.arc(this.x,this.y,Math.max(0.1,this.size),0,Math.PI*2);ctx2.fill();
+    ctx2.restore();
+  }
+}
+function spawnFX(type,n=30){
+  const cx=canvas.width/2,cy=canvas.height/2;
+  for(let i=0;i<n;i++)particles.push(new Particle(cx,cy,type));
+}
+function animFX(){
+  ctx2.clearRect(0,0,canvas.width,canvas.height);
+  particles=particles.filter(p=>p.life>0);
+  particles.forEach(p=>{p.update();p.draw();});
+  requestAnimationFrame(animFX);
+}
+animFX();
+
+/* ============================================================
+   INTRO SCREEN
+============================================================ */
+document.getElementById('name-next-btn').addEventListener('click',()=>{
+  const p1=document.getElementById('name-p1').value.trim()||'Pemain 1';
+  const p2=document.getElementById('name-p2').value.trim()||'Pemain 2';
+  // Temporarily store, will assign white/black after toss
+  window._tempP1=p1;window._tempP2=p2;
+  showScreen('toss-screen');
+  document.getElementById('toss-result').textContent='Siap dikocok!';
+  document.getElementById('toss-flip-btn').style.display='inline-block';
+  document.getElementById('toss-start-btn').style.display='none';
+  document.getElementById('toss-coin').textContent='🪙';
+  document.getElementById('toss-coin').classList.remove('flipping');
+});
+
+/* ============================================================
+   COIN TOSS
+============================================================ */
+document.getElementById('toss-flip-btn').addEventListener('click',()=>{
+  const coin=document.getElementById('toss-coin');
+  coin.classList.remove('flipping');void coin.offsetWidth;
+  coin.classList.add('flipping');
+  playSound('coinFlip');
+  const p1Gets=Math.random()<0.5?'white':'black';
+  setTimeout(()=>{
+    const p1=window._tempP1||'Pemain 1';
+    const p2=window._tempP2||'Pemain 2';
+    if(p1Gets==='white'){
+      PLAYERS.white.name=p1;PLAYERS.black.name=p2;
+      coin.textContent='♔';
+      document.getElementById('toss-result').innerHTML=
+        `<span class="highlight">${p1}</span> dapat ♙ PUTIH<br><span class="highlight">${p2}</span> dapat ♟ HITAM`;
+    }else{
+      PLAYERS.white.name=p2;PLAYERS.black.name=p1;
+      coin.textContent='♚';
+      document.getElementById('toss-result').innerHTML=
+        `<span class="highlight">${p2}</span> dapat ♙ PUTIH<br><span class="highlight">${p1}</span> dapat ♟ HITAM`;
+    }
+    document.getElementById('toss-flip-btn').style.display='none';
+    document.getElementById('toss-start-btn').style.display='inline-block';
+  },1900);
+});
+
+document.getElementById('toss-start-btn').addEventListener('click',()=>{
+  document.getElementById('chess-name-white').textContent=PLAYERS.white.name;
+  document.getElementById('chess-name-black').textContent=PLAYERS.black.name;
+  PLAYERS.white.iman=100;PLAYERS.black.iman=100;
+  skipNextTurn=null;
+  initBoard();renderBoard();
+  showScreen('chess-screen');
+  playBgm('chessBgm');
+});
+
+/* ============================================================
+   INIT — start at name screen
+============================================================ */
+initBoard();
+// Don't auto-render board yet — wait for player setup
+</script>
+<!-- FROZEN POPUP -->
+<div id="frozen-popup">
+  <div class="frozen-card">
+    <div class="frozen-icon">❄️</div>
+    <div class="frozen-title">Terkena Kutukan!</div>
+    <div class="frozen-msg" id="frozen-msg">Giliran dilewati karena Iblis mengunci gerakanmu!</div>
+    <button class="frozen-btn" onclick="dismissFrozen()">Lanjutkan ➤</button>
+  </div>
+</div>
+
+<!-- BOTH FAIL POPUP -->
+<div id="both-fail-popup">
+  <div class="bothfail-card">
+    <div class="bothfail-icon">😈</div>
+    <div class="bothfail-title">Iblis Menang!</div>
+    <div class="bothfail-msg" id="bothfail-msg">Kedua pemain kalah melawan Iblis...<br>Tingkatkan iman kalian! Jangan mudah tergoda godaan syaitan!</div>
+    <button class="bothfail-btn" onclick="dismissBothFail()">🔄 Lanjutkan Permainan</button>
+  </div>
+</div>
+
+</body>
+</html>
